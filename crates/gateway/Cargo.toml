@@ -1,0 +1,16 @@
+[package]
+name = "gateway"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+dotenvy = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio = { workspace = true }
+twilight-gateway = { workspace = true }
+twilight-http = { workspace = true }
+twilight-model = { workspace = true }
+twilight-interactions = { workspace = true }
+twilight-util = { workspace = true }
