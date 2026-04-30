@@ -1,0 +1,24 @@
+[workspace]
+members = [
+    "crates/scraper",
+    "crates/db",
+    "crates/discord",
+    "crates/scheduler",
+    "crates/bot", 
+    "crates/core",   
+]
+resolver = "2"
+
+[workspace.dependencies]
+tokio       = { version = "1", features = ["full"] }
+sqlx        = { version = "0.7", features = ["postgres", "runtime-tokio", "chrono", "uuid", "bigdecimal"] }
+reqwest     = { version = "0.12", features = ["json"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+tracing     = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow      = "1"
+thiserror   = "1"
+chrono      = { version = "0.4", features = ["serde"] }
+uuid        = { version = "1", features = ["v4", "serde"] }
+dotenvy     = "0.15"
