@@ -1,0 +1,22 @@
+# docker/docker-compose.yml
+version: "3.9"
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ctfbot
+      POSTGRES_PASSWORD: ctfbot
+      POSTGRES_DB: ctfbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1    # persist snapshots every 60s
+
+volumes:
+  pgdata:

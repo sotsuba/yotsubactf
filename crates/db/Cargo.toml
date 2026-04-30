@@ -1,0 +1,11 @@
+[package]
+name = "db"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ctftime_core = { package = "core", path = "../core" }
+sqlx = { version = "0.7", features = ["postgres", "chrono", "uuid", "runtime-tokio", "bigdecimal"] }
+chrono = "0.4"
+uuid = { version = "1.0", features = ["v4"] }
+anyhow = "1.0"

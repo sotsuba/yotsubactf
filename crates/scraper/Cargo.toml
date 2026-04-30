@@ -1,0 +1,15 @@
+[package]
+name = "scraper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ctftime_core = { package = "core", path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+reqwest = { workspace = true }
+anyhow = { workspace = true }
+rss = "2"
+html_scraper = { package = "scraper", version = "0.19" }
+feed-rs = "2.3.1"
