@@ -3,6 +3,7 @@ members = [
     "crates/scraper",
     "crates/db",
     "crates/discord",
+    "crates/gateway",
     "crates/scheduler",
     "crates/bot", 
     "crates/core",   
