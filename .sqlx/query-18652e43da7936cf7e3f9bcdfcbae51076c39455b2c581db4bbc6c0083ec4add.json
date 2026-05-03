@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT digest_enabled, digest_channel_id, digest_day_utc FROM subscriptions WHERE guild_id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "digest_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "digest_channel_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "digest_day_utc",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "18652e43da7936cf7e3f9bcdfcbae51076c39455b2c581db4bbc6c0083ec4add"
+}

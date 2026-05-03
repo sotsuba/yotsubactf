@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO guilds (guild_id) VALUES ($1)\n               ON CONFLICT (guild_id) DO UPDATE SET updated_at = NOW()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5c06491fdcd179dee75645b84413aac3cfdf0fb0f9a4bdc3a49a35b782c0d2e7"
+}

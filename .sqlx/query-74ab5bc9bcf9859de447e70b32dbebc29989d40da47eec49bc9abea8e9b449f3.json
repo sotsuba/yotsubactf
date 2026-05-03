@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT DISTINCT event_name\n            FROM writeups\n            WHERE event_name ILIKE $1 AND event_name IS NOT NULL\n            ORDER BY event_name\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "event_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "74ab5bc9bcf9859de447e70b32dbebc29989d40da47eec49bc9abea8e9b449f3"
+}
