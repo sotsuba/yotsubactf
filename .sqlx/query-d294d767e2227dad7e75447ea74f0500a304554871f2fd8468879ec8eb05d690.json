@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id, r.ctftime_team_id, r.ctf_event_id, r.place, r.score, r.total_teams,\n                      r.notified_at, r.created_at,\n                      array_agg(t.guild_id) as guild_ids\n               FROM team_results r\n               JOIN tracked_teams t ON t.ctftime_team_id = r.ctftime_team_id\n               WHERE r.notified_at IS NULL\n               GROUP BY r.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "ctftime_team_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "ctf_event_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "place",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "score",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_teams",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "notified_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "guild_ids",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "d294d767e2227dad7e75447ea74f0500a304554871f2fd8468879ec8eb05d690"
+}

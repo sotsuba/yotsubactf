@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE subscriptions SET digest_enabled = $1, digest_channel_id = $2, digest_day_utc = $3 WHERE guild_id = $4 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Text",
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "295750f7a83f9b33c6b76548095d24b504cb981c40fea2a4d1a6c65902388e5b"
+}

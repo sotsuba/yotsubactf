@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, ctftime_team_id, ctf_event_id, place, score, total_teams, notified_at, created_at\n               FROM team_results WHERE ctftime_team_id = $1\n               ORDER BY created_at DESC LIMIT $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "ctftime_team_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "ctf_event_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "place",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "score",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_teams",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "notified_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "16786a8f9194ec81f8f318fd1e42454e72a52031487ade556e04bf1456c765d1"
+}

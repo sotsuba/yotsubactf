@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE subscriptions SET deleted_at = NOW()\n               WHERE guild_id = $1 AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24ef8e4da2d0013f400d743e9377ecd84adab3a5fa50ab8610ee540d48dc8b17"
+}
