@@ -1,0 +1,17 @@
+[package]
+name    = "shared"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono  = { workspace = true }
+serde   = { workspace = true }
+uuid    = { workspace = true }
+anyhow.workspace = true
+thiserror.workspace = true
+async-trait  = { workspace = true }
+serde_json.workspace = true
+tokio.workspace = true
+
+[features]
+testing = []

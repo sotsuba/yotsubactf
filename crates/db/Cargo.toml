@@ -1,11 +1,17 @@
 [package]
-name = "db"
+name    = "db"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ctftime_core = { package = "core", path = "../core" }
-sqlx = { version = "0.7", features = ["postgres", "chrono", "uuid", "runtime-tokio", "bigdecimal"] }
-chrono = "0.4"
-uuid = { version = "1.0", features = ["v4"] }
-anyhow = "1.0"
+shared = { path = "../shared" }
+sqlx   = { workspace = true, features = ["postgres", "uuid", "chrono", "json"] }
+redis  = { workspace = true }
+chrono = { workspace = true }
+uuid   = { workspace = true }
+serde  = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+metrics = "0.24.5"

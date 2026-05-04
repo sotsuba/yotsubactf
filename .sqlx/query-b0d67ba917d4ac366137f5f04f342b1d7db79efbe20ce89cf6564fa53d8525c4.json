@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, user_id, kind as \"kind: DbReminderKind\", ctftime_id, event_title, event_start_at,\n                   message, remind_at, interval_secs, repeat_until, fire_count_max,\n                   sent_count, last_sent_at, created_at\n            FROM reminders\n            WHERE user_id = $1\n              AND (\n                  -- One-shot: not sent AND not stale (older than 1h missed window)\n                  (kind IN ('event', 'timer') \n                    AND last_sent_at IS NULL \n                    AND remind_at >= NOW() - INTERVAL '1 hour')\n                  OR\n                  -- Recurring: next fire is due or in future, and series not exhausted\n                  (kind = 'recurring' AND remind_at <= repeat_until)\n              )\n              AND ($2::timestamptz IS NULL OR remind_at > $2)\n            ORDER BY remind_at ASC\n            LIMIT 11\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind: DbReminderKind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "ctftime_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "event_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "event_start_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "remind_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "interval_secs",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "repeat_until",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "fire_count_max",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "sent_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "last_sent_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "b0d67ba917d4ac366137f5f04f342b1d7db79efbe20ce89cf6564fa53d8525c4"
+}
