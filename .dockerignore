@@ -1,0 +1,37 @@
+# ── Development & IDEs ────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Version Control ───────────────────────────────────────────────────────────
+.git/
+.gitignore
+.githooks/
+.github/
+
+# ── Environment & Secrets ─────────────────────────────────────────────────────
+.env*
+!.env.example
+
+# ── Build Artifacts ───────────────────────────────────────────────────────────
+target/
+*.log
+*.zip
+*.tar.gz
+
+# ── Tooling & CI/CD ───────────────────────────────────────────────────────────
+Makefile
+cliff.toml
+docker-compose*.yml
+
+# ── Project Specific ──────────────────────────────────────────────────────────
+# Exclude monitoring configurations as they are managed separately
+monitoring/
+
+# ── Documentation ─────────────────────────────────────────────────────────────
+README.md
+docs/
+*.md
