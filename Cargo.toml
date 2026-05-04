@@ -24,7 +24,7 @@ twilight-gateway      = "0.15"
 twilight-http         = "0.15"
 twilight-model        = "0.15"
 twilight-interactions = "0.15"
-twilight-util         = { version = "0.15", features = ["builder"] }
+twilight-util         = { version = "0.17", features = ["builder"] }
 async-trait = "0.1"
 moka        = { version = "0.12", features = ["future"] }
 redis       = { version = "0.25", features = ["tokio-comp", "json"] }
