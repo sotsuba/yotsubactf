@@ -7,6 +7,7 @@ pub mod upcoming;
 use super::{CommandContext, SlashCommand};
 use crate::embed::ephemeral_error;
 use async_trait::async_trait;
+use crate::state::AppState;
 use shared::{CtfError, CtfResult};
 use twilight_model::application::command::CommandType;
 use twilight_model::application::interaction::application_command::CommandOptionValue;

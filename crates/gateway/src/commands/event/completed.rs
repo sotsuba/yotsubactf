@@ -2,7 +2,7 @@
 
 use crate::embed::{ephemeral_error, paged_response, CtfEmbed, PaginationNav, MAX_PAGE_SIZE};
 use crate::state::AppState;
-use shared::{CompletedFilter, CtfEvent, CtfResult, ReadCtfRepository, TeamResult};
+use shared::{CompletedFilter, CtfEvent, CtfResult, TeamResult};
 use std::collections::HashMap;
 use twilight_model::application::interaction::application_command::{
     CommandDataOption, CommandOptionValue,
@@ -82,17 +82,21 @@ async fn fetch_team_results(
     guild_id: Option<&str>,
 ) -> CtfResult<HashMap<i64, TeamResult>> {
     let mut results = HashMap::new();
-    if let Some(gid) = guild_id {
-        if let Some(team) = state.teams.get_followed_team(gid).await? {
-            let list = state.teams.list_recent_results(team.ctftime_team_id, 50).await?;
-            for r in list {
-                results.insert(r.ctf_event_id, r);
-            }
+    if let Some(gid) = guild_id
+        && let Some(team) = state.teams.get_followed_team(gid).await?
+    {
+        let list = state
+            .teams
+            .list_recent_results(team.ctftime_team_id, 50)
+            .await?;
+        for r in list {
+            results.insert(r.ctf_event_id, r);
         }
     }
     Ok(results)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_response(
     events: &[CtfEvent],
     team_results: &HashMap<i64, TeamResult>,
@@ -122,7 +126,7 @@ fn build_response(
             let weight_tag = event
                 .weight
                 .map(|w| format!(" | {w}"))
-                .unwrap_or_else(|| String::new());
+                .unwrap_or_else(String::new);
 
             desc.push_str(&format!(
                 "**{title}** — ended {ended_rel} | {format_tag}{weight_tag}\n",
@@ -137,11 +141,11 @@ fn build_response(
                 let total_str = res
                     .total_teams
                     .map(|t| format!(" / {t} teams"))
-                    .unwrap_or_else(|| String::new());
+                    .unwrap_or_else(String::new);
                 let score_str = res
                     .score
                     .map(|s| format!(" — {:.2} pts", s))
-                    .unwrap_or_else(|| String::new());
+                    .unwrap_or_else(String::new);
 
                 // Ordinal suffix helper for common ranks
                 let ordinal = match res.place {
@@ -155,7 +159,7 @@ fn build_response(
                     "  › Team: {ordinal}{total_str}{score_str}\n"
                 ));
             }
-            desc.push_str("\n");
+            desc.push('\n');
         }
         embed = embed.description(desc.trim_end());
     }
