@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+
+set -e
+source "$(dirname "$0")/log.sh"
+
+log_header "pre-commit" "fast quality checks"
+
+run_step "cargo fmt" "check formatting" \
+    cargo fmt --all -- --check || { log_failure "pre-commit" "cargo fmt" "Run 'cargo fmt' to fix formatting"; exit 1; }
+
+run_step "cargo clippy" "linting" \
+    cargo clippy --workspace --all-targets -- -D warnings || { log_failure "pre-commit" "cargo clippy" "Fix lint warnings"; exit 1; }
+
+run_step "cargo test" "unit tests" \
+    cargo test --workspace --lib -- --test-threads=4 || { log_failure "pre-commit" "cargo test" "Fix failing tests"; exit 1; }
+
+log_success "pre-commit" 3 0

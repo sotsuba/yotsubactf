@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# .githooks/commit-msg
+
+source "$(dirname "$0")/log.sh"
+
+MSG=$(cat "$1")
+hook_timer_start
+
+# Allow merge commits and fixups
+if echo "$MSG" | grep -qE "^(Merge|fixup!|squash!)"; then
+    exit 0
+fi
+
+PATTERN="^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert)(\(.+\))?(!)?: .{1,100}"
+
+if ! echo "$MSG" | grep -qE "$PATTERN"; then
+    log_header "commit-msg" "Conventional Commits check"
+    log_fail "commit-msg" "invalid format"
+    
+    echo ""
+    echo "  ${BOLD}${WHITE}Format:${RESET} <type>(<scope>): <description>"
+    echo ""
+    echo "  ${BOLD}${WHITE}Types:${RESET}  feat fix chore docs style refactor perf test ci build revert"
+    echo ""
+    echo "  ${BOLD}${WHITE}Example:${RESET}"
+    echo "    feat(reminder): add notify_channel_id option"
+    echo "    fix(scheduler): skip stale reminders correctly"
+    echo ""
+    
+    log_failure "commit-msg" "regex match" "Follow Conventional Commits format"
+    exit 1
+fi

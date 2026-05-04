@@ -1,0 +1,81 @@
+# docker-compose.prod.yml
+# Run locally: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+services:
+  postgres-prod:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ctfbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ctfbot_prod
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctfbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-prod:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1
+    volumes:
+      - redisdata_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  scheduler-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: scheduler
+    restart: unless-stopped
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-prod:5432/ctfbot_prod
+      REDIS_URL: redis://redis-prod:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      SCRAPE_INTERVAL_SECS: 3600
+      REMIND_INTERVAL_SECS: 60
+      RESULTS_INTERVAL_SECS: 21600
+      WRITEUPS_INTERVAL_SECS: 7200
+      DIGEST_INTERVAL_SECS: 3600
+      RUST_LOG: info
+      HEALTH_PORT: 8085
+    ports:
+      - "127.0.0.1:8086:8085"
+
+  gateway-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway
+    restart: unless-stopped
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-prod:5432/ctfbot_prod
+      REDIS_URL: redis://redis-prod:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+      DISCORD_GUILD_ID: ""
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      RUST_LOG: info
+      HEALTH_PORT: 8085
+    ports:
+      - "127.0.0.1:8085:8085"
+
+volumes:
+  pgdata_prod:
+  redisdata_prod:

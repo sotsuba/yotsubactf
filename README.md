@@ -1,34 +1,127 @@
-# ctftime-discort-bot
+# CTFTime Discord Bot
 
-Rust bot that tracks CTFtime events and posts updates to Discord.
+A robust, observable Discord bot for CTF teams, built with Rust. It tracks upcoming CTFs from CTFtime, manages team tracking, sends reminders, and provides detailed analytics.
 
-## Setup
+## Features
 
-1. Copy `.env.example` to `.env` and fill in values.
-2. Start dependencies with Docker Compose.
-3. Run the worker or the gateway service (added in later steps).
+- **Event Tracking**: Automatically scrapes upcoming CTFs and notifies channels.
+- **Team Tracking**: Follow your team's performance and get notified of new results.
+- **Reminders**: Configurable reminders for upcoming events (DM and Channel).
+- **Writeup Search**: Find writeups for past CTFs directly from Discord.
+- **Observability**: Built-in Prometheus metrics and Grafana dashboards.
+- **Resilience**: Retries with exponential backoff for CTFtime API calls.
 
-## Environment Variables
+## Tech Stack
 
-### Discord
+- **Language**: Rust (2024 edition)
+- **Database**: PostgreSQL (SQLx)
+- **Caching**: Redis & Moka (In-memory)
+- **Discord API**: Twilight
+- **Monitoring**: Prometheus & Grafana
+- **Deployment**: Docker Compose
 
-- `DISCORD_TOKEN`: bot token.
-- `DISCORD_APPLICATION_ID`: application ID for registering slash commands.
-- `DISCORD_CHANNEL_ID`: channel ID for event notifications.
-- `DISCORD_GUILD_ID`: staging guild for guild-scoped command registration.
+## Getting Started
 
-### Sharding
+### Prerequisites
 
-- `DISCORD_SHARD_TOTAL`: total shards to use. If empty, use Discord recommended count.
-- `DISCORD_SHARD_START`: first shard (0-based, inclusive) for this process.
-- `DISCORD_SHARD_END`: last shard (0-based, inclusive) for this process.
+- [Rust](https://www.rust-lang.org/tools/install) (latest stable)
+- [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/install/)
+- A Discord Bot Token (from [Discord Developer Portal](https://discord.com/developers/applications))
 
-### Database and Cache
+### Installation
 
-- `DATABASE_URL`: Postgres connection string.
-- `REDIS_URL`: Redis connection string.
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/sotsuba/ctftime-discord-bot.git
+    cd ctftime-discord-bot
+    ```
 
-### Other
+2.  **Configure environment**:
+    ```bash
+    cp .env.example .env
+    # Edit .env and fill in DISCORD_TOKEN and DISCORD_APPLICATION_ID
+    ```
 
-- `SCRAPER_DELAY_MS`: delay between HTML scrape requests.
-- `RUST_LOG`: logging filter.
+3.  **Start the services**:
+    ```bash
+    docker compose up -d
+    ```
+
+### Development
+
+- **Run migrations**: `sqlx migrate run`
+- **Run the gateway**: `cargo run -p gateway`
+- **Run the scheduler**: `cargo run -p scheduler`
+- **Run tests**: `cargo test`
+
+## CI/CD & Git Hooks
+
+This project uses Git hooks to ensure code quality and conventional commits.
+
+### Setup Git Hooks
+
+Run the following command once after cloning the repository:
+
+```bash
+make hooks
+```
+
+This will enable:
+- `pre-commit`: Runs `fmt`, `clippy`, and unit tests.
+- `commit-msg`: Enforces [Conventional Commits](https://www.conventionalcommits.org/).
+- `pre-push`: Runs full workspace checks and SQLx offline data validation.
+
+### SQLx Offline Data
+
+To build the Docker image without a live database, we use SQLx offline mode. If you modify any SQL queries, you must regenerate the offline data:
+
+```bash
+make prepare
+```
+
+Then commit the changes in the `.sqlx/` directory.
+
+## Deployment
+
+For local development and private hosting, use Docker Compose. You can run isolated Staging and Production environments on your local machine using separate compose files.
+
+### 1. Standard Local Dev
+```bash
+docker compose up -d
+```
+
+### 2. Multi-Environment (Local)
+
+This allows you to test changes on a development bot before applying them to your primary bot.
+
+- **Staging**: `docker compose -f docker-compose.staging.yml --env-file .env.staging up -d`
+    - Ports: Gateway (8185), Scheduler (8186)
+- **Production**: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d`
+    - Ports: Gateway (8085), Scheduler (8086)
+
+### Setup Instructions
+1.  **Configure environment files**:
+    Create `.env.staging` and `.env.prod` by copying `.env.example` and filling in the respective bot tokens and application IDs.
+2.  **Run migrations**:
+    The bots automatically run migrations on startup within their isolated databases.
+
+## Monitoring
+
+Once running, you can access the monitoring stack:
+
+- **Prometheus**: [http://localhost:9090](http://localhost:9090)
+- **Grafana**: [http://localhost:3030](http://localhost:3030) (Default login: `admin` / `admin`)
+
+Dashboards for the Gateway and Scheduler are pre-provisioned in Grafana.
+
+## Project Structure
+
+- `crates/gateway`: The Discord bot process (slash commands, events).
+- `crates/scheduler`: Background tasks (scraping, results, reminders).
+- `crates/db`: Shared PostgreSQL repository implementations.
+- `crates/shared`: Common models, traits, and utilities.
+- `monitoring/`: Configuration for Prometheus and Grafana.
+
+## License
+
+MIT

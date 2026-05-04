@@ -1,22 +1,117 @@
-# docker/docker-compose.yml
-version: "3.9"
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ctfbot
       POSTGRES_PASSWORD: ctfbot
       POSTGRES_DB: ctfbot
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctfbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
-      - "6379:6379"
-    command: redis-server --save 60 1    # persist snapshots every 60s
+      - "127.0.0.1:6379:6379"
+    command: redis-server --save 60 1
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: scheduler
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:ctfbot@postgres:5432/ctfbot
+      REDIS_URL: redis://redis:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL:-admin@example.com}
+      SCRAPE_INTERVAL_SECS:   ${SCRAPE_INTERVAL_SECS:-3600}
+      RESULTS_INTERVAL_SECS:  ${RESULTS_INTERVAL_SECS:-21600}
+      WRITEUPS_INTERVAL_SECS: ${WRITEUPS_INTERVAL_SECS:-3600}
+      DIGEST_INTERVAL_SECS:   ${DIGEST_INTERVAL_SECS:-3600}
+      REMIND_INTERVAL_SECS:   ${REMIND_INTERVAL_SECS:-60}
+      RUST_LOG: ${RUST_LOG:-info}
+      HEALTH_PORT: 8085
+    ports:
+      - "127.0.0.1:8086:8085"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:ctfbot@postgres:5432/ctfbot
+      REDIS_URL: redis://redis:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL:-admin@example.com}
+      RUST_LOG: ${RUST_LOG:-info}
+      HEALTH_PORT: 8085
+    ports:
+      - "127.0.0.1:8085:8085" # Metrics / Health
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/infra/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3030:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafdata:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+  metabase:
+    image: metabase/metabase:v0.51.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - metabase_data:/metabase-data
+    depends_on:
+      - postgres
 
 volumes:
   pgdata:
+  grafdata:
+  metabase_data:

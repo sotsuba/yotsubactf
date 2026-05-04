@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# .githooks/pre-push
+
+set -e
+source "$(dirname "$0")/log.sh"
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+log_header "pre-push" "branch: $BRANCH"
+
+# Block direct push to main
+if [ "$BRANCH" = "main" ]; then
+    log_failure "pre-push" "direct push to main" "Main branch is protected. Use a Pull Request."
+    exit 1
+fi
+
+run_step "cargo check" "workspace verification" \
+    cargo check --workspace --all-targets || { log_failure "pre-push" "cargo check" "Ensure code compiles"; exit 1; }
+
+run_step "sqlx check" "offline data sync" \
+    bash -c "SQLX_OFFLINE=true cargo check --workspace 2>&1 | grep -i 'sqlx' && exit 1 || exit 0" || { log_failure "pre-push" "sqlx check" "Run 'make prepare' to sync offline data"; exit 1; }
+
+run_step "cargo test" "library tests" \
+    cargo test --workspace --lib || { log_failure "pre-push" "cargo test" "Fix failing library tests"; exit 1; }
+
+log_success "pre-push" 3 0
