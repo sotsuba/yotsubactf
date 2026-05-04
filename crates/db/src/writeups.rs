@@ -57,40 +57,39 @@ impl WriteupRepository for PostgresWriteupRepository {
         });
 
         // Invalidate Redis cache when a new writeup is inserted
-        if is_inserted {
-            if let Some(client) = &self.redis {
-                if let Ok(mut conn) = client.get_multiplexed_async_connection().await {
-                    let mut keys = Vec::new();
-                    let mut cursor: u64 = 0;
+        if is_inserted
+            && let Some(client) = &self.redis
+            && let Ok(mut conn) = client.get_multiplexed_async_connection().await
+        {
+            let mut keys = Vec::new();
+            let mut cursor: u64 = 0;
 
-                    loop {
-                        let (new_cursor, page): (u64, Vec<String>) = redis::cmd("SCAN")
-                            .arg(cursor)
-                            .arg("MATCH")
-                            .arg("writeups:recent:*")
-                            .arg("COUNT")
-                            .arg(100)
-                            .query_async(&mut conn)
-                            .await
-                            .unwrap_or((0, vec![]));
+            loop {
+                let (new_cursor, page): (u64, Vec<String>) = redis::cmd("SCAN")
+                    .arg(cursor)
+                    .arg("MATCH")
+                    .arg("writeups:recent:*")
+                    .arg("COUNT")
+                    .arg(100)
+                    .query_async(&mut conn)
+                    .await
+                    .unwrap_or((0, vec![]));
 
-                        keys.extend(page);
-                        cursor = new_cursor;
-                        if cursor == 0 {
-                            break;
-                        }
-                    }
-
-                    if !keys.is_empty() {
-                        let _: () = redis::cmd("DEL")
-                            .arg(&keys)
-                            .query_async(&mut conn)
-                            .await
-                            .unwrap_or_else(|e| {
-                                tracing::warn!(error = %e, "Failed to delete keys from Redis for writeup cache invalidation");
-                            });
-                    }
+                keys.extend(page);
+                cursor = new_cursor;
+                if cursor == 0 {
+                    break;
                 }
+            }
+
+            if !keys.is_empty() {
+                let _: () = redis::cmd("DEL")
+                    .arg(&keys)
+                    .query_async(&mut conn)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!(error = %e, "Failed to delete keys from Redis for writeup cache invalidation");
+                    });
             }
         }
 
@@ -219,7 +218,7 @@ impl WriteupRepository for PostgresWriteupRepository {
         Ok(rows
             .into_iter()
             .map(|r| WriteupSearchResult {
-                rank: r.rank as f32,
+                rank: r.rank,
                 writeup: Writeup {
                     id: r.id,
                     ctftime_id: r.ctftime_id,
@@ -238,19 +237,19 @@ impl WriteupRepository for PostgresWriteupRepository {
     async fn list_recent(&self, limit: i64, offset: i64) -> Result<Vec<Writeup>> {
         // Try Redis cache first
         let cache_key = format!("writeups:recent:{}:{}", limit, offset);
-        if let Some(client) = &self.redis {
-            if let Ok(mut conn) = client.get_multiplexed_async_connection().await {
-                let cached: Option<String> = redis::cmd("GET")
-                    .arg(&cache_key)
-                    .query_async(&mut conn)
-                    .await
-                    .ok();
+        if let Some(client) = &self.redis
+            && let Ok(mut conn) = client.get_multiplexed_async_connection().await
+        {
+            let cached: Option<String> = redis::cmd("GET")
+                .arg(&cache_key)
+                .query_async(&mut conn)
+                .await
+                .ok();
 
-                if let Some(json) = cached {
-                    if let Ok(writeups) = serde_json::from_str::<Vec<Writeup>>(&json) {
-                        return Ok(writeups);
-                    }
-                }
+            if let Some(json) = cached
+                && let Ok(writeups) = serde_json::from_str::<Vec<Writeup>>(&json)
+            {
+                return Ok(writeups);
             }
         }
 
@@ -273,20 +272,19 @@ impl WriteupRepository for PostgresWriteupRepository {
         .map_err(crate::db_err)?;
 
         // Save to cache
-        if let Some(client) = &self.redis {
-            if let Ok(mut conn) = client.get_multiplexed_async_connection().await {
-                if let Ok(json) = serde_json::to_string(&writeups) {
-                    let _: () = redis::cmd("SETEX")
-                        .arg(&cache_key)
-                        .arg(600) // 10 minutes
-                        .arg(json)
-                        .query_async(&mut conn)
-                        .await
-                        .unwrap_or_else(|e| {
-                            tracing::warn!(error = %e, "Failed to save writeups to Redis cache");
-                        });
-                }
-            }
+        if let Some(client) = &self.redis
+            && let Ok(mut conn) = client.get_multiplexed_async_connection().await
+            && let Ok(json) = serde_json::to_string(&writeups)
+        {
+            let _: () = redis::cmd("SETEX")
+                .arg(&cache_key)
+                .arg(600) // 10 minutes
+                .arg(json)
+                .query_async(&mut conn)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(error = %e, "Failed to save writeups to Redis cache");
+                });
         }
 
         Ok(writeups)

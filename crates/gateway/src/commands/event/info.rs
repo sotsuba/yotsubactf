@@ -1,4 +1,4 @@
-use crate::embed::{ephemeral_error, CtfEmbed};
+use crate::embed::{CtfEmbed, ephemeral_error};
 use chrono::Utc;
 use shared::{CtfError, CtfResult, ReadCtfRepository};
 use twilight_model::application::interaction::application_command::{

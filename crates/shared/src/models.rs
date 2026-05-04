@@ -38,17 +38,12 @@ pub enum CreateReminderOutcome {
     QuotaExceeded,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ReminderKind {
+    #[default]
     Event,
     Timer,
     Recurring,
-}
-
-impl Default for ReminderKind {
-    fn default() -> Self {
-        Self::Event
-    }
 }
 
 /// A flexible reminder record (event-linked, timer, or recurring).

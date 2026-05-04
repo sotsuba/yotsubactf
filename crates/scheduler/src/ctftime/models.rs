@@ -61,25 +61,25 @@ impl EnrichedEvent {
 
     /// Apply an HTML patch to fill in blank API fields and merge social links.
     pub fn apply_patch(&mut self, patch: HtmlEventPatch) {
-        if is_blank(&self.raw.title) {
-            if let Some(v) = patch.title {
-                self.raw.title = v;
-            }
+        if is_blank(&self.raw.title)
+            && let Some(v) = patch.title
+        {
+            self.raw.title = v;
         }
-        if is_blank(&self.raw.description) {
-            if let Some(v) = patch.description {
-                self.raw.description = v;
-            }
+        if is_blank(&self.raw.description)
+            && let Some(v) = patch.description
+        {
+            self.raw.description = v;
         }
-        if is_blank(&self.raw.format) {
-            if let Some(v) = patch.format {
-                self.raw.format = v;
-            }
+        if is_blank(&self.raw.format)
+            && let Some(v) = patch.format
+        {
+            self.raw.format = v;
         }
-        if self.raw.weight <= 0.0 {
-            if let Some(v) = patch.weight {
-                self.raw.weight = v;
-            }
+        if self.raw.weight <= 0.0
+            && let Some(v) = patch.weight
+        {
+            self.raw.weight = v;
         }
         if let Some(v) = patch.is_onsite {
             self.raw.onsite = v;

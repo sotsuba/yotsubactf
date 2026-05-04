@@ -6,7 +6,7 @@ use twilight_model::application::interaction::application_command::{
 };
 use twilight_model::http::interaction::InteractionResponse;
 
-use crate::embed::{ephemeral_embed, ephemeral_error, CtfEmbed};
+use crate::embed::{CtfEmbed, ephemeral_embed, ephemeral_error};
 
 // ── Subcommand handler ────────────────────────────────────────────────────────
 

@@ -208,7 +208,7 @@ async fn handle_team(
         CtfError::InvalidInput("This subcommand can only be used in a server.".to_string())
     })?;
 
-    let team = state.teams.get_followed_team(&gid).await?;
+    let team = state.teams.get_followed_team(gid).await?;
     let team = match team {
         Some(t) => t,
         None => {
@@ -218,10 +218,10 @@ async fn handle_team(
         }
     };
 
-    let results = fetch_team_writeups_internal(state, &gid, page).await?;
+    let results = fetch_team_writeups_internal(state, gid, page).await?;
 
     if results.is_empty() && page == 1 {
-        return Ok(ephemeral_reply(&format!(
+        return Ok(ephemeral_reply(format!(
             "No writeups found for events participated by **{}**.",
             team.team_name
         )));
@@ -230,7 +230,7 @@ async fn handle_team(
     Ok(build_response(
         WriteupFetch::Team(team.team_name, results),
         page,
-        &gid,
+        gid,
         false,
     ))
 }
@@ -390,14 +390,14 @@ async fn handle_search(
         .writeups
         .search_writeups(
             query,
-            category.as_deref(),
+            category,
             DEFAULT_PAGE_SIZE,
             (page - 1) * DEFAULT_PAGE_SIZE,
         )
         .await?;
 
     if results.is_empty() && page == 1 {
-        return Ok(ephemeral_reply(&format!(
+        return Ok(ephemeral_reply(format!(
             "No writeups found for \"{}\".",
             query
         )));
@@ -447,7 +447,7 @@ async fn handle_event(
         .await?;
 
     if results.is_empty() && page == 1 {
-        return Ok(ephemeral_reply(&format!(
+        return Ok(ephemeral_reply(format!(
             "No writeups found for event \"{}\".",
             name
         )));
@@ -479,7 +479,7 @@ async fn handle_category(
         .await?;
 
     if results.is_empty() && page == 1 {
-        return Ok(ephemeral_reply(&format!(
+        return Ok(ephemeral_reply(format!(
             "No writeups found in category \"{}\".",
             category
         )));
