@@ -27,6 +27,12 @@ pub struct UpcomingFilter {
     pub sort_by: Option<String>,
 }
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct CompletedFilter {
+    pub format: Option<String>,
+    pub min_weight: Option<f64>,
+}
+
 // ── Subscription domain type ──────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
@@ -76,6 +82,16 @@ pub trait ReadCtfRepository: Send + Sync {
         start: DateTime<Utc>,
         end: DateTime<Utc>,
     ) -> crate::error::CtfResult<Vec<CtfEvent>>;
+
+    async fn list_completed(
+        &self,
+        limit: i64,
+        offset: i64,
+        filter: &CompletedFilter,
+    ) -> crate::error::CtfResult<PaginatedEvents> {
+        let _ = (limit, offset, filter);
+        unimplemented!()
+    }
 
     /// Fuzzy case-insensitive title search among ALL events (no time filter).
     async fn get_all_by_title_fuzzy(
