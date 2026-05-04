@@ -306,7 +306,11 @@ impl ReminderRepository for InMemoryReminderRepository {
         let reminders = self.reminders.read().await;
         let mut results: Vec<Reminder> = reminders
             .iter()
-            .filter(|r| r.user_id == user_id && r.sent_count == 0)
+            .filter(|r| r.user_id == user_id)
+            .filter(|r| match r.kind {
+                ReminderKind::Event | ReminderKind::Timer => r.sent_count == 0,
+                ReminderKind::Recurring => r.repeat_until.is_none_or(|until| r.remind_at <= until),
+            })
             .filter(|r| cursor.is_none_or(|c| r.remind_at > c))
             .cloned()
             .collect();
@@ -321,7 +325,11 @@ impl ReminderRepository for InMemoryReminderRepository {
             .read()
             .await
             .iter()
-            .filter(|r| r.user_id == user_id && matches!(r.kind, ReminderKind::Recurring))
+            .filter(|r| {
+                r.user_id == user_id
+                    && matches!(r.kind, ReminderKind::Recurring)
+                    && r.repeat_until.is_none_or(|until| r.remind_at <= until)
+            })
             .count() as i64)
     }
 
