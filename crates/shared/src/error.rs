@@ -47,7 +47,7 @@ impl CtfError {
                 } else {
                     "Please try again later.".to_string()
                 };
-                CtfEmbed::error("Rate Limited").description(&msg)
+                CtfEmbed::error("Rate Limited").description(msg)
             }
             CtfError::Timeout => CtfEmbed::error("Request Timeout")
                 .description("The request took too long. Please try again."),

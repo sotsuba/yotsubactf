@@ -2,8 +2,9 @@
 //!
 //! Two responsibilities:
 //! 1. `fetch_event_patch` — fetches the CTFTime event page and extracts:
-//!    • Fallback title / description / format / weight when the REST API returns blank fields.
-//!    • Social/community invite links found on that page.
+//! - Fallback title / description / format / weight when the REST API
+//!   returns blank fields.
+//! - Social/community invite links found on that page.
 //!
 //! This is the **single** CTFTime fetch per enrichment cycle; callers must
 //! not separately call the old `fetch_social_links` (removed).

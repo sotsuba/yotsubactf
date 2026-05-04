@@ -236,7 +236,7 @@ impl WriteupRepository for PostgresWriteupRepository {
 
     async fn list_recent(&self, limit: i64, offset: i64) -> Result<Vec<Writeup>> {
         // Try Redis cache first
-        let cache_key = format!("writeups:recent:{}:{}", limit, offset);
+        let cache_key = format!("writeups:recent:{limit }:o{offset}");
         if let Some(client) = &self.redis
             && let Ok(mut conn) = client.get_multiplexed_async_connection().await
         {

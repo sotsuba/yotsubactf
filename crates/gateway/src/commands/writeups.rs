@@ -549,6 +549,7 @@ fn build_pagination_components(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_response(
     fetch: WriteupFetch,
     page: i64,

@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-pub const COLOR_BRAND: u32 = 0x2f_6f_ed;
-pub const COLOR_SUCCESS: u32 = 0x2e_cc_71;
-pub const COLOR_WARNING: u32 = 0xe6_7e_22;
-pub const COLOR_ERROR: u32 = 0xe7_4c_3c;
+pub const COLOR_BRAND: u32 = 0x2F_6F_ED;
+pub const COLOR_SUCCESS: u32 = 0x2E_CC_71;
+pub const COLOR_WARNING: u32 = 0xE6_7E_22;
+pub const COLOR_ERROR: u32 = 0xE7_4C_3C;
 pub const FOOTER_TEXT: &str = "CTF Bot";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

@@ -78,7 +78,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
         {
             // Generate a simple hash/key for the filter.
             let filter_key = serde_json::to_string(filter).unwrap_or_default();
-            let cache_key = format!("upcoming:{}:o{}:l{}", filter_key, offset, limit);
+            let cache_key = format!("upcoming:{filter_key}:o{offset}:l{limit}");
 
             if let Ok(cached) = conn.get::<_, String>(&cache_key).await
                 && let Ok(res) = serde_json::from_str::<PaginatedEvents>(&cached)
@@ -140,7 +140,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             && let Ok(mut conn) = client.get_multiplexed_async_connection().await
         {
             let filter_key = serde_json::to_string(filter).unwrap_or_default();
-            let cache_key = format!("upcoming:{}:o{}:l{}", filter_key, offset, limit);
+            let cache_key = format!("upcoming:{filter_key}:o{offset}:l{limit}");
             if let Ok(serialized) = serde_json::to_string(&res) {
                 let _ = conn.set_ex::<_, _, ()>(&cache_key, serialized, 300).await;
             } else {
@@ -199,7 +199,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
     }
 
     async fn get_by_title_fuzzy(&self, query: &str) -> Result<Option<CtfEvent>> {
-        let pattern = format!("%{}%", query);
+        let pattern = format!("%{query}%");
 
         let row = sqlx::query_as::<_, DbCtfEvent>(
             r#"
@@ -291,7 +291,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
     }
 
     async fn get_all_by_title_fuzzy(&self, query: &str) -> Result<Option<CtfEvent>> {
-        let pattern = format!("%{}%", query);
+        let pattern = format!("%{query}%");
 
         let row = sqlx::query_as::<_, DbCtfEvent>(
             r#"

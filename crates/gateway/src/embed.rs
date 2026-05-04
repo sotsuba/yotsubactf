@@ -46,6 +46,7 @@ impl CtfEmbed {
     pub fn description(self, text: impl Into<String>) -> Self {
         Self(self.0.description(text))
     }
+    #[allow(dead_code)]
     pub fn url(self, url: impl Into<String>) -> Self {
         Self(self.0.url(url))
     }
@@ -55,6 +56,7 @@ impl CtfEmbed {
     pub fn footer(self, text: impl Into<String>) -> Self {
         Self(self.0.footer(text))
     }
+    #[allow(dead_code)]
     pub fn timestamp(self, ts: DateTime<Utc>) -> Self {
         Self(self.0.timestamp(ts))
     }

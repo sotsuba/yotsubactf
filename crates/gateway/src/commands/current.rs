@@ -43,7 +43,7 @@ pub async fn handle(
 ) -> CtfResult<InteractionResponse> {
     let limit = parse_limit(options);
     let paginated = fetch_page(repo, 1, limit).await?;
-    let has_next = paginated.events.len() as i64 >= limit && (limit < paginated.total_count);
+    let has_next = limit < paginated.total_count;
     Ok(build_response(
         &paginated.events,
         1,
@@ -74,8 +74,7 @@ pub async fn handle_component(
                 .map(|v| v.clamp(1, MAX_PAGE_SIZE))
                 .unwrap_or(DEFAULT_PAGE_SIZE);
             let paginated = fetch_page(repo, page, limit).await?;
-            let has_next =
-                paginated.events.len() as i64 >= limit && (page * limit < paginated.total_count);
+            let has_next = page * limit < paginated.total_count;
             Ok(build_response(
                 &paginated.events,
                 page,

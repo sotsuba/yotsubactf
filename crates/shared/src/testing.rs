@@ -37,28 +37,30 @@ impl ReadCtfRepository for InMemoryCtfRepository {
             if e.end_time < now {
                 return false;
             }
-            if filter.format.as_ref().is_some_and(|fmt| {
-                !e.format
+            if let Some(ref fmt) = filter.format {
+                if !e
+                    .format
                     .as_deref()
                     .map(|f| f.to_lowercase().contains(&fmt.to_lowercase()))
                     .unwrap_or(false)
-            }) {
-                return false;
+                {
+                    return false;
+                }
             }
-            if filter
-                .min_weight
-                .is_some_and(|w| e.weight.unwrap_or(0.0) < w)
-            {
-                return false;
+            if let Some(w) = filter.min_weight {
+                if e.weight.unwrap_or(0.0) < w {
+                    return false;
+                }
             }
-            if filter
-                .max_weight
-                .is_some_and(|w| e.weight.unwrap_or(0.0) > w)
-            {
-                return false;
+            if let Some(w) = filter.max_weight {
+                if e.weight.unwrap_or(0.0) > w {
+                    return false;
+                }
             }
-            if filter.onsite.is_some_and(|onsite| e.is_onsite != onsite) {
-                return false;
+            if let Some(onsite) = filter.onsite {
+                if e.is_onsite != onsite {
+                    return false;
+                }
             }
             true
         });
@@ -305,8 +307,8 @@ impl ReminderRepository for InMemoryReminderRepository {
         let reminders = self.reminders.read().await;
         let mut results: Vec<Reminder> = reminders
             .iter()
-            .filter(|r| r.user_id == user_id)
-            .filter(|r| cursor.is_none_or(|c| r.remind_at > c))
+            .filter(|r| r.user_id == user_id && r.sent_count == 0)
+            .filter(|r| cursor.map_or(true, |c| r.remind_at > c))
             .cloned()
             .collect();
 
@@ -320,7 +322,11 @@ impl ReminderRepository for InMemoryReminderRepository {
             .read()
             .await
             .iter()
-            .filter(|r| r.user_id == user_id && matches!(r.kind, ReminderKind::Recurring))
+            .filter(|r| {
+                r.user_id == user_id
+                    && matches!(r.kind, ReminderKind::Recurring)
+                    && r.repeat_until.is_none_or(|until| r.remind_at <= until)
+            })
             .count() as i64)
     }
 

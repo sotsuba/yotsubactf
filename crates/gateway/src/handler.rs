@@ -47,12 +47,9 @@ use std::str::FromStr;
 enum ComponentAction {
     Remind(String),
     ReminderList(String),
-    Current(()),
-    Upcoming(()),
-    EventUpcoming(String),
-    EventCurrent(String),
-    EventCompleted(String),
-    Writeups(()),
+    Current,
+    Writeups,
+    Upcoming,
 }
 
 impl FromStr for ComponentAction {
@@ -63,18 +60,9 @@ impl FromStr for ComponentAction {
         match name {
             "remind" => Ok(Self::Remind(rest.to_string())),
             "reminder_list" => Ok(Self::ReminderList(rest.to_string())),
-            "current" => Ok(Self::Current(())),
-            "writeups" => Ok(Self::Writeups(())),
-            "upcoming" => Ok(Self::Upcoming(())),
-            "event" => {
-                let (sub, rest) = rest.split_once(':').unwrap_or((rest, ""));
-                match sub {
-                    "upcoming" => Ok(Self::EventUpcoming(rest.to_string())),
-                    "current" => Ok(Self::EventCurrent(rest.to_string())),
-                    "completed" => Ok(Self::EventCompleted(rest.to_string())),
-                    _ => Err(()),
-                }
-            }
+            "current" => Ok(Self::Current),
+            "writeups" => Ok(Self::Writeups),
+            "upcoming" => Ok(Self::Upcoming),
             _ => Err(()),
         }
     }
@@ -209,13 +197,13 @@ async fn handle_interaction(
                         )
                         .await
                     }
-                    ComponentAction::Current(_) => {
+                    ComponentAction::Current => {
                         commands::current::handle_component(state.events.as_ref(), data).await
                     }
-                    ComponentAction::Writeups(_) => {
+                    ComponentAction::Writeups => {
                         commands::writeups::handle_component(state, data).await
                     }
-                    ComponentAction::Upcoming(_) => {
+                    ComponentAction::Upcoming => {
                         commands::upcoming::handle_component(state.events.as_ref(), data).await
                     }
                     ComponentAction::EventUpcoming(rest) => {
@@ -245,7 +233,64 @@ async fn handle_interaction(
     let business_success = response_result.is_ok();
     let latency_ms = start.elapsed().as_millis() as i64;
 
-    // Persist command metrics & logs.
+    let (command_name, kind) = match &interaction.data {
+        Some(InteractionData::ApplicationCommand(data)) => (data.name.as_str(), "slash"),
+        Some(InteractionData::MessageComponent(data)) => (
+            data.custom_id.split(':').next().unwrap_or("component"),
+            "component",
+        ),
+        _ => ("unknown", "unknown"),
+    };
+
+    // ── Send Response to Discord ────────────────────────────────────────────
+    let discord_result = http
+        .interaction(application_id)
+        .create_response(interaction.id, &interaction.token, &response)
+        .await;
+
+    let delivery_success = discord_result.is_ok();
+    if let Err(err) = &discord_result {
+        tracing::error!(
+            ?err,
+            command  = command_name,
+            guild_id = ?guild_id_str,
+            user_id  = user_id,
+            "failed to send interaction response to Discord"
+        );
+    }
+
+    // ── Post-execution metrics and logging ──────────────────────────────────
+    let success = business_success && delivery_success;
+    let elapsed_ms = start.elapsed().as_millis();
+    let elapsed_secs = start.elapsed().as_secs_f64();
+
+    // Track metrics
+    metrics::counter!(
+        shared::metrics::GATEWAY_COMMANDS_TOTAL,
+        "command" => command_name.to_string(),
+        "kind"    => kind.to_string(),
+        "success" => success.to_string()
+    )
+    .increment(1);
+
+    metrics::histogram!(
+        shared::metrics::GATEWAY_COMMAND_LATENCY,
+        "command" => command_name.to_string(),
+        "kind"    => kind.to_string()
+    )
+    .record(elapsed_secs);
+
+    tracing::info!(
+        command    = command_name,
+        kind       = kind,
+        success    = success,
+        guild_id   = ?guild_id_str,
+        user_id    = user_id,
+        latency_ms = elapsed_ms,
+        "interaction handled"
+    );
+
+    // Persist to DB for historical analytics
     let _ = state
         .command_logs
         .log_command(

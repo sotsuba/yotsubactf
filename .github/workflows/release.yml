@@ -5,6 +5,9 @@ on:
     tags:
       - "v*.*.*"
 
+env:
+  REGISTRY: ghcr.io
+
 jobs:
   release:
     name: Create Release
@@ -13,53 +16,63 @@ jobs:
       contents: write
       packages: write
 
+    strategy:
+      matrix:
+        target: [gateway, scheduler]
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0    # need full history for changelog generation
+          fetch-depth: 0
 
       - name: Extract version
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Generate changelog from conventional commits
-        id: changelog
-        uses: orhun/git-cliff-action@v3
-        with:
-          config: cliff.toml
-          args: --latest --strip header
-
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push gateway with version tag
+      - name: Build and push ${{ matrix.target }}
         uses: docker/build-push-action@v5
         with:
           context: .
-          target: gateway
+          target: ${{ matrix.target }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/gateway:${{ steps.version.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}/gateway:latest
-          cache-from: type=gha,scope=gateway
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.target }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.target }}:latest
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,scope=${{ matrix.target }},mode=max
 
-      - name: Build and push scheduler with version tag
-        uses: docker/build-push-action@v5
+  create-github-release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    needs: release
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
         with:
-          context: .
-          target: scheduler
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/scheduler:${{ steps.version.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}/scheduler:latest
-          cache-from: type=gha,scope=scheduler
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -69,4 +82,3 @@ jobs:
           body: ${{ steps.changelog.outputs.content }}
           draft: false
           prerelease: ${{ contains(steps.version.outputs.VERSION, '-') }}
-
