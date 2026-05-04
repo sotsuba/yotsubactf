@@ -29,7 +29,7 @@ hex          = "0.4"
 data-encoding = "2"
 md-5         = "0.10"
 sha1         = "0.10"
-sha2         = "0.10"
+sha2         = "0.11"
 digest       = "0.10"
 axum = { workspace = true }
 metrics = "0.24.5"
