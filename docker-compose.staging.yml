@@ -1,0 +1,82 @@
+# docker-compose.staging.yml
+# Run locally: docker compose -f docker-compose.staging.yml --env-file .env.staging up -d
+
+services:
+  postgres-stg:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ctfbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ctfbot_staging
+    volumes:
+      - pgdata_stg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctfbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-stg:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1
+    volumes:
+      - redisdata_stg:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  scheduler-stg:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: scheduler
+    restart: unless-stopped
+    depends_on:
+      postgres-stg:
+        condition: service_healthy
+      redis-stg:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-stg:5432/ctfbot_staging
+      REDIS_URL: redis://redis-stg:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      # Faster intervals for testing
+      SCRAPE_INTERVAL_SECS: ${SCRAPE_INTERVAL_SECS:-600}
+      REMIND_INTERVAL_SECS: ${REMIND_INTERVAL_SECS:-30}
+      RESULTS_INTERVAL_SECS: ${RESULTS_INTERVAL_SECS:-3600}
+      WRITEUPS_INTERVAL_SECS: ${WRITEUPS_INTERVAL_SECS:-600}
+      DIGEST_INTERVAL_SECS: ${DIGEST_INTERVAL_SECS:-600}
+      RUST_LOG: ${RUST_LOG:-debug}
+      HEALTH_PORT: 8085
+    ports:
+      - "127.0.0.1:8186:8085"
+
+  gateway-stg:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway
+    restart: unless-stopped
+    depends_on:
+      postgres-stg:
+        condition: service_healthy
+      redis-stg:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-stg:5432/ctfbot_staging
+      REDIS_URL: redis://redis-stg:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      RUST_LOG: ${RUST_LOG:-debug}
+      HEALTH_PORT: 8085
+    ports:
+      - "127.0.0.1:8185:8085"
+
+volumes:
+  pgdata_stg:
+  redisdata_stg:

@@ -1,10 +1,23 @@
-/target
+# Artifacts
+*.db
+*.sqlite
+*.zip
+
+# Planning docs (keep on Drive/Notion instead of repo)
+*.docx
+*.pptx
+
+# Rust
+target/
+**/*.rs.bk
+
+# Env
 .env
 .env.*
 !.env.example
-*.db
-*.sqlite
-*.sqlite3
-.DS_Store
-.idea/
-.vscode/
+
+# Grafana dashboards (volume is excluded, JSON files are tracked)
+# grafana/dashboards/*.json
+
+# Scratch
+scratch/
