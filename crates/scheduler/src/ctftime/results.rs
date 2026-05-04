@@ -67,7 +67,7 @@ pub fn parse_results_from_html(html: &str, ctftime_id: i64) -> Vec<TeamResult> {
         let team_id = cols[1].select(sel_anchor()).next().and_then(|a| {
             a.value()
                 .attr("href")
-                .and_then(|h| h.split('/').filter(|s| !s.is_empty()).last())
+                .and_then(|h| h.split('/').rfind(|s| !s.is_empty()))
                 .and_then(|s| s.parse::<i64>().ok())
         });
 

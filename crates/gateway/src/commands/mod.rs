@@ -47,6 +47,7 @@ pub trait SlashCommand: Send + Sync {
 pub struct CommandContext<'a> {
     pub state: &'a AppState,
     pub guild_id: Option<&'a str>,
+    #[allow(dead_code)]
     pub user_id: Id<UserMarker>,
     pub options: &'a [CommandDataOption],
 }

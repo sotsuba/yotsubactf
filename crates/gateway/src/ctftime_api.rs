@@ -1,51 +1,60 @@
-use shared::{CtfResult, CtfError};
 use serde::Deserialize;
+use shared::{CtfError, CtfResult};
 
 const BASE: &str = "https://ctftime.org/api/v1";
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct TeamEntry {
     pub team_name: String,
-    pub points:    f64,
-    pub team_id:   i64,
+    pub points: f64,
+    #[allow(dead_code)]
+    pub team_id: i64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct TeamSearchResult {
-    pub id:      i64,
-    pub name:    String,
+    pub id: i64,
+    pub name: String,
     pub country: String,
-    pub rating:  Option<f64>,
+    pub rating: Option<f64>,
     pub aliases: Vec<String>,
 }
-pub async fn request_with_retry(client: &reqwest::Client, url: &str) -> CtfResult<reqwest::Response> {
+pub async fn request_with_retry(
+    client: &reqwest::Client,
+    url: &str,
+) -> CtfResult<reqwest::Response> {
     let mut retries = 0;
     let max_retries = 3;
     let mut backoff = std::time::Duration::from_secs(2);
 
     loop {
-        let resp = client.get(url)
+        let resp = client
+            .get(url)
             .header("Accept", "application/json")
-            .send().await
+            .send()
+            .await
             .map_err(|e| {
                 if e.is_timeout() {
                     CtfError::Timeout
                 } else {
-                    CtfError::ExternalApi { status: 0, message: format!("Request failed: {e}") }
+                    CtfError::ExternalApi {
+                        status: 0,
+                        message: format!("Request failed: {e}"),
+                    }
                 }
             })?;
 
         let status = resp.status();
-        
+
         // Retry on 429 (Rate Limit) and 5xx (Server Error)
-        if status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
-            if retries < max_retries {
-                tracing::warn!(?status, %url, ?backoff, "CTFtime API error, retrying...");
-                tokio::time::sleep(backoff).await;
-                retries += 1;
-                backoff *= 2;
-                continue;
-            }
+        if (status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error())
+            && retries < max_retries
+        {
+            tracing::warn!(?status, %url, ?backoff, "CTFtime API error, retrying...");
+            tokio::time::sleep(backoff).await;
+            retries += 1;
+            backoff *= 2;
+            continue;
         }
 
         return Ok(resp);
@@ -59,14 +68,16 @@ pub async fn fetch_top(client: &reqwest::Client, year: i32) -> CtfResult<Vec<(u3
     if !resp.status().is_success() {
         let status = resp.status();
         tracing::warn!(?status, %url, "CTFtime API returned error for top stats after retries");
-        return Err(CtfError::ExternalApi { 
-            status: status.as_u16(), 
-            message: format!("CTFtime returned error for top stats: {}", status)
+        return Err(CtfError::ExternalApi {
+            status: status.as_u16(),
+            message: format!("CTFtime returned error for top stats: {}", status),
         });
     }
 
-    let val: serde_json::Value = resp.json().await
-        .map_err(|e| CtfError::ExternalApi { status: 0, message: format!("JSON parse failed: {e}") })?;
+    let val: serde_json::Value = resp.json().await.map_err(|e| CtfError::ExternalApi {
+        status: 0,
+        message: format!("JSON parse failed: {e}"),
+    })?;
 
     let mut entries: Vec<(u32, TeamEntry)> = Vec::new();
 
@@ -80,8 +91,11 @@ pub async fn fetch_top(client: &reqwest::Client, year: i32) -> CtfResult<Vec<(u3
         // Case 1: Direct array
         for (i, v) in arr.iter().enumerate() {
             let rank = (i + 1) as u32;
-            let entry: TeamEntry = serde_json::from_value(v.clone())
-                .map_err(|e| CtfError::ExternalApi { status: 0, message: format!("Invalid team entry at index {i}: {e}") })?;
+            let entry: TeamEntry =
+                serde_json::from_value(v.clone()).map_err(|e| CtfError::ExternalApi {
+                    status: 0,
+                    message: format!("Invalid team entry at index {i}: {e}"),
+                })?;
             entries.push((rank, entry));
         }
     } else if let Some(obj) = val.as_object() {
@@ -102,8 +116,11 @@ pub async fn fetch_top(client: &reqwest::Client, year: i32) -> CtfResult<Vec<(u3
         if let Some(arr) = target_obj {
             for (i, v) in arr.iter().enumerate() {
                 let rank = (i + 1) as u32;
-                let entry: TeamEntry = serde_json::from_value(v.clone())
-                    .map_err(|e| CtfError::ExternalApi { status: 0, message: format!("Invalid team entry at index {i}: {e}") })?;
+                let entry: TeamEntry =
+                    serde_json::from_value(v.clone()).map_err(|e| CtfError::ExternalApi {
+                        status: 0,
+                        message: format!("Invalid team entry at index {i}: {e}"),
+                    })?;
                 entries.push((rank, entry));
             }
         } else if let Some(map) = is_array {
@@ -112,27 +129,39 @@ pub async fn fetch_top(client: &reqwest::Client, year: i32) -> CtfResult<Vec<(u3
                     status: 0,
                     message: format!("Invalid rank key: {k}"),
                 })?;
-                let entry: TeamEntry = serde_json::from_value(v.clone())
-                    .map_err(|e| CtfError::ExternalApi { status: 0, message: format!("Invalid team entry at rank {rank}: {e}") })?;
+                let entry: TeamEntry =
+                    serde_json::from_value(v.clone()).map_err(|e| CtfError::ExternalApi {
+                        status: 0,
+                        message: format!("Invalid team entry at rank {rank}: {e}"),
+                    })?;
                 entries.push((rank, entry));
             }
         }
     } else {
-        return Err(CtfError::ExternalApi { status: 0, message: "Expected JSON object or array for top stats".into() });
+        return Err(CtfError::ExternalApi {
+            status: 0,
+            message: "Expected JSON object or array for top stats".into(),
+        });
     }
 
     entries.sort_by_key(|(rank, _)| *rank);
     Ok(entries)
 }
 
-pub async fn search_team(client: &reqwest::Client, query: &str) -> CtfResult<Vec<TeamSearchResult>> {
+pub async fn search_team(
+    client: &reqwest::Client,
+    query: &str,
+) -> CtfResult<Vec<TeamSearchResult>> {
     let query = query.trim();
     if query.is_empty() || query.len() > 100 {
         return Ok(vec![]);
     }
 
     // Only allow alphanumeric, space, and common symbols to prevent exploitation/leaks
-    if !query.chars().all(|c| c.is_alphanumeric() || c == ' ' || c == '-' || c == '_') {
+    if !query
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == ' ' || c == '-' || c == '_')
+    {
         return Ok(vec![]);
     }
 
@@ -142,13 +171,16 @@ pub async fn search_team(client: &reqwest::Client, query: &str) -> CtfResult<Vec
     if !resp.status().is_success() {
         let status = resp.status();
         tracing::warn!(?status, %url, "CTFtime API returned error for team search after retries");
-        return Err(CtfError::ExternalApi { 
-            status: status.as_u16(), 
-            message: format!("CTFtime returned error for team search: {}", status)
+        return Err(CtfError::ExternalApi {
+            status: status.as_u16(),
+            message: format!("CTFtime returned error for team search: {}", status),
         });
     }
 
-    resp.json().await.map_err(|e| CtfError::ExternalApi { status: 0, message: format!("JSON parse failed: {e}") })
+    resp.json().await.map_err(|e| CtfError::ExternalApi {
+        status: 0,
+        message: format!("JSON parse failed: {e}"),
+    })
 }
 
 pub async fn get_team_name(client: &reqwest::Client, team_id: i64) -> CtfResult<Option<String>> {
@@ -162,12 +194,18 @@ pub async fn get_team_name(client: &reqwest::Client, team_id: i64) -> CtfResult<
     if !resp.status().is_success() {
         let status = resp.status();
         tracing::warn!(?status, %url, team_id, "CTFtime API returned error for team lookup after retries");
-        return Err(CtfError::ExternalApi { 
-            status: status.as_u16(), 
-            message: format!("CTFtime returned error for team {team_id}: {}", status)
+        return Err(CtfError::ExternalApi {
+            status: status.as_u16(),
+            message: format!("CTFtime returned error for team {team_id}: {}", status),
         });
     }
 
-    let val: serde_json::Value = resp.json().await.map_err(|e| CtfError::ExternalApi { status: 0, message: format!("JSON parse failed: {e}") })?;
-    Ok(val.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()))
+    let val: serde_json::Value = resp.json().await.map_err(|e| CtfError::ExternalApi {
+        status: 0,
+        message: format!("JSON parse failed: {e}"),
+    })?;
+    Ok(val
+        .get("name")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string()))
 }

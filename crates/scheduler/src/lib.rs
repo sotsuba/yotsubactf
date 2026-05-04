@@ -81,11 +81,9 @@ impl SharedState {
 
     #[cfg(test)]
     pub fn new_mock() -> Self {
-        use db::PgPool;
         use shared::testing::{
-            InMemoryCommandLogRepository, InMemoryCtfRepository, InMemoryGuildRepository,
-            InMemoryReminderRepository, InMemoryTeamRepository, InMemoryWriteupRepository,
-            MockNotifier,
+            InMemoryCtfRepository, InMemoryGuildRepository, InMemoryReminderRepository,
+            InMemoryTeamRepository, InMemoryWriteupRepository, MockNotifier,
         };
 
         let pool = db::PgPool::connect_lazy("postgres://localhost/unused").unwrap();

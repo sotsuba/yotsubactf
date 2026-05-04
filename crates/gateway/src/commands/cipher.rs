@@ -239,8 +239,8 @@ fn atbash(input: &str) -> String {
     input
         .chars()
         .map(|c| match c {
-            'a'..='z' => ('z' as u8 - (c as u8 - 'a' as u8)) as char,
-            'A'..='Z' => ('Z' as u8 - (c as u8 - 'A' as u8)) as char,
+            'a'..='z' => (b'z' - (c as u8 - b'a')) as char,
+            'A'..='Z' => (b'Z' - (c as u8 - b'A')) as char,
             _ => c,
         })
         .collect()

@@ -56,20 +56,18 @@ pub async fn handle(
         ..Default::default()
     };
 
-    if has_next {
-        if let Some(last) = reminders.last() {
-            let next_cursor = last.remind_at.timestamp();
-            response_data.components = Some(vec![Component::ActionRow(ActionRow {
-                components: vec![Component::Button(Button {
-                    custom_id: Some(format!("reminder_list:{}", next_cursor)),
-                    label: Some("Next →".to_string()),
-                    style: ButtonStyle::Primary,
-                    disabled: false,
-                    emoji: None,
-                    url: None,
-                })],
-            })]);
-        }
+    if has_next && let Some(last) = reminders.last() {
+        let next_cursor = last.remind_at.timestamp();
+        response_data.components = Some(vec![Component::ActionRow(ActionRow {
+            components: vec![Component::Button(Button {
+                custom_id: Some(format!("reminder_list:{}", next_cursor)),
+                label: Some("Next →".to_string()),
+                style: ButtonStyle::Primary,
+                disabled: false,
+                emoji: None,
+                url: None,
+            })],
+        })]);
     }
 
     Ok(InteractionResponse {

@@ -1,5 +1,4 @@
 use anyhow::Result;
-use metrics;
 use std::sync::Arc;
 use tracing::warn;
 use twilight_gateway::Event;
@@ -35,10 +34,10 @@ pub async fn handle_event(
     application_id: Id<ApplicationMarker>,
     state: &Arc<AppState>,
 ) -> Result<()> {
-    if let Event::InteractionCreate(interaction) = event {
-        if let Err(err) = handle_interaction(interaction.0, http, application_id, state).await {
-            warn!(?err, ?shard_id, "interaction handler returned error");
-        }
+    if let Event::InteractionCreate(interaction) = event
+        && let Err(err) = handle_interaction(interaction.0, http, application_id, state).await
+    {
+        warn!(?err, ?shard_id, "interaction handler returned error");
     }
     Ok(())
 }
@@ -48,9 +47,9 @@ use std::str::FromStr;
 enum ComponentAction {
     Remind(String),
     ReminderList(String),
-    Current(String),
-    Writeups(String),
-    Upcoming(String),
+    Current,
+    Writeups,
+    Upcoming,
 }
 
 impl FromStr for ComponentAction {
@@ -61,9 +60,9 @@ impl FromStr for ComponentAction {
         match name {
             "remind" => Ok(Self::Remind(rest.to_string())),
             "reminder_list" => Ok(Self::ReminderList(rest.to_string())),
-            "current" => Ok(Self::Current(rest.to_string())),
-            "writeups" => Ok(Self::Writeups(rest.to_string())),
-            "upcoming" => Ok(Self::Upcoming(rest.to_string())),
+            "current" => Ok(Self::Current),
+            "writeups" => Ok(Self::Writeups),
+            "upcoming" => Ok(Self::Upcoming),
             _ => Err(()),
         }
     }
@@ -187,13 +186,13 @@ async fn handle_interaction(
                         )
                         .await
                     }
-                    ComponentAction::Current(_) => {
+                    ComponentAction::Current => {
                         commands::current::handle_component(state.events.as_ref(), data).await
                     }
-                    ComponentAction::Writeups(_) => {
+                    ComponentAction::Writeups => {
                         commands::writeups::handle_component(state, data).await
                     }
-                    ComponentAction::Upcoming(_) => {
+                    ComponentAction::Upcoming => {
                         commands::upcoming::handle_component(state.events.as_ref(), data).await
                     }
                 },
@@ -221,7 +220,7 @@ async fn handle_interaction(
     let (command_name, kind) = match &interaction.data {
         Some(InteractionData::ApplicationCommand(data)) => (data.name.as_str(), "slash"),
         Some(InteractionData::MessageComponent(data)) => (
-            data.custom_id.splitn(2, ':').next().unwrap_or("component"),
+            data.custom_id.split(':').next().unwrap_or("component"),
             "component",
         ),
         _ => ("unknown", "unknown"),
