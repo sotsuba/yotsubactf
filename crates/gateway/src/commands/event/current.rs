@@ -36,15 +36,14 @@ pub async fn handle(
 // ── Button component dispatcher ───────────────────────────────────────────────
 
 pub async fn handle_component(
-    state: &AppState,
-    custom_id: &str,
+    repo: &dyn ReadCtfRepository,
+    rest: &str,
 ) -> CtfResult<InteractionResponse> {
-    let repo = state.events.as_ref();
-    // Route by the segments of the custom_id.
-    // Schema: event:current:page:<p>:<limit>
-    let parts: Vec<&str> = custom_id.splitn(4, ':').collect();
+    // Route by the segments of the custom_id rest.
+    // Schema: page:<p>:<limit>
+    let parts: Vec<&str> = rest.splitn(2, ':').collect();
     match parts.as_slice() {
-        ["event", "current", "page", rest] => {
+        ["page", rest] => {
             let mut parts = rest.splitn(2, ':');
             let page: i64 = parts
                 .next()

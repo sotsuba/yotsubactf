@@ -49,20 +49,15 @@ pub async fn handle(
 // ── Button component dispatcher ───────────────────────────────────────────────
 
 pub async fn handle_component(
-    state: &AppState,
-    custom_id: &str,
+    repo: &dyn ReadCtfRepository,
+    rest: &str,
 ) -> CtfResult<InteractionResponse> {
-    let repo = state.events.as_ref();
-    // Route by the segments of the custom_id.
-    // Schema: event:upcoming:<action>:<rest>
-    let parts: Vec<&str> = custom_id.splitn(4, ':').collect();
+    // Route by the segments of the custom_id rest.
+    // Schema: page:<rest>
+    let parts: Vec<&str> = rest.splitn(2, ':').collect();
     match parts.as_slice() {
-        // event:upcoming:page:<rest>
-        ["event", "upcoming", "page", rest] => handle_page_component(repo, rest).await,
-        // event:upcoming:join:<ctftime_id>
-        ["event", "upcoming", "join", ctftime_id_str] => {
-            handle_join_component(repo, ctftime_id_str).await
-        }
+        ["page", rest] => handle_page_component(repo, rest).await,
+        ["join", ctftime_id_str] => handle_join_component(repo, ctftime_id_str).await,
         _ => Ok(ephemeral_error("Unsupported interaction.")),
     }
 }
@@ -120,6 +115,7 @@ async fn fetch_page(
     repo.list_upcoming(limit, offset, filter).await
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_paged_response(
     events: &[CtfEvent],
     page: i64,

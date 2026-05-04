@@ -43,11 +43,13 @@ pub async fn handle(
 pub async fn handle_component(
     state: &AppState,
     guild_id: Option<&str>,
-    custom_id: &str,
+    rest: &str,
 ) -> CtfResult<InteractionResponse> {
-    let parts: Vec<&str> = custom_id.splitn(4, ':').collect();
+    // Route by the segments of the custom_id rest.
+    // Schema: page:<rest>
+    let parts: Vec<&str> = rest.splitn(2, ':').collect();
     match parts.as_slice() {
-        ["event", "completed", "page", rest] => {
+        ["page", rest] => {
             let (page, limit, filter) = match parse_page_rest(rest) {
                 Some(v) => v,
                 None => return Ok(ephemeral_error("Unsupported interaction.")),
