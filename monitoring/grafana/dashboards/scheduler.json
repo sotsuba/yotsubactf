@@ -1,0 +1,67 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 2,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Pending Reminders",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "scheduler_reminders_pending_count" }
+      ]
+    },
+    {
+      "title": "Reminders Fired/Skipped",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(scheduler_reminders_fired_total[5m])) by (result)",
+          "legendFormat": "Fired ({{result}})"
+        },
+        {
+          "expr": "sum(rate(scheduler_reminders_skipped_total[5m]))",
+          "legendFormat": "Skipped"
+        }
+      ]
+    },
+    {
+      "title": "Task Execution Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(scheduler_task_duration_seconds_bucket[5m])) by (le, task))",
+          "legendFormat": "{{task}}"
+        }
+      ]
+    },
+    {
+      "title": "Task Success/Failure Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(scheduler_tasks_total[5m])) by (task, result)",
+          "legendFormat": "{{task}} ({{result}})"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "CTFBot Scheduler",
+  "uid": "ctfbot-scheduler",
+  "version": 1,
+  "weekStart": ""
+}

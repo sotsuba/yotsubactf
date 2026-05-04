@@ -21,3 +21,6 @@ target/
 
 # Scratch
 scratch/
+**/*.zip
+**/*.log
+**/*.tar.gz
