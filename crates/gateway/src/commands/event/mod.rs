@@ -22,12 +22,73 @@ impl SlashCommand for EventCommand {
     }
 
     fn definition(&self) -> twilight_model::application::command::Command {
+        use twilight_util::builder::command::{
+            BooleanBuilder, IntegerBuilder, NumberBuilder, StringBuilder,
+        };
+
         CommandBuilder::new("event", "Browse CTF events", CommandType::ChatInput)
-            .option(SubCommandBuilder::new("upcoming", "Upcoming CTFs").build())
-            .option(SubCommandBuilder::new("current", "CTFs in progress now").build())
-            .option(SubCommandBuilder::new("completed", "Recently ended CTFs").build())
-            .option(SubCommandBuilder::new("countdown", "Countdown to a CTF").build())
-            .option(SubCommandBuilder::new("info", "Details about a CTF").build())
+            .option(
+                SubCommandBuilder::new("upcoming", "Upcoming CTFs")
+                    .option(
+                        IntegerBuilder::new("count", "Number of events to show (max 25)")
+                            .min_value(1)
+                            .max_value(25)
+                            .build(),
+                    )
+                    .option(
+                        StringBuilder::new("format", "Filter by format")
+                            .choices([
+                                ("Jeopardy", "Jeopardy"),
+                                ("Attack-Defense", "Attack-Defense"),
+                                ("Mixed", "Mixed"),
+                            ])
+                            .build(),
+                    )
+                    .option(NumberBuilder::new("weight_min", "Min weight").min_value(0.0).build())
+                    .option(NumberBuilder::new("weight_max", "Max weight").min_value(0.0).build())
+                    .option(BooleanBuilder::new("onsite", "true=onsite, false=online").build())
+                    .option(
+                        StringBuilder::new("sort_by", "Sort order")
+                            .choices([
+                                ("Time (Nearest)", "time"),
+                                ("Reputation (Weight)", "weight"),
+                            ])
+                            .build(),
+                    )
+                    .build(),
+            )
+            .option(
+                SubCommandBuilder::new("current", "CTFs in progress now")
+                    .option(
+                        IntegerBuilder::new("count", "Number of events to show")
+                            .min_value(1)
+                            .max_value(25)
+                            .build(),
+                    )
+                    .build(),
+            )
+            .option(
+                SubCommandBuilder::new("completed", "Recently ended CTFs")
+                    .option(
+                        IntegerBuilder::new("count", "Number of events to show")
+                            .min_value(1)
+                            .max_value(25)
+                            .build(),
+                    )
+                    .option(StringBuilder::new("format", "Filter by format").build())
+                    .option(NumberBuilder::new("weight_min", "Min weight").min_value(0.0).build())
+                    .build(),
+            )
+            .option(
+                SubCommandBuilder::new("countdown", "Countdown to a CTF")
+                    .option(StringBuilder::new("query", "CTF name").required(true).build())
+                    .build(),
+            )
+            .option(
+                SubCommandBuilder::new("info", "Details about a CTF")
+                    .option(StringBuilder::new("query", "CTF name").required(true).build())
+                    .build(),
+            )
             .build()
     }
 
@@ -48,5 +109,19 @@ impl SlashCommand for EventCommand {
             "info" => info::handle(ctx.state.events.as_ref(), opts).await,
             _ => Ok(ephemeral_error("Unknown subcommand.")),
         }
+    }
+}
+
+pub async fn handle_component(
+    state: &AppState,
+    guild_id: Option<&str>,
+    custom_id: &str,
+) -> CtfResult<InteractionResponse> {
+    let parts: Vec<&str> = custom_id.splitn(3, ':').collect();
+    match parts.as_slice() {
+        ["event", "upcoming", _] => upcoming::handle_component(state, custom_id).await,
+        ["event", "current", _] => current::handle_component(state, custom_id).await,
+        ["event", "completed", _] => completed::handle_component(state, guild_id, custom_id).await,
+        _ => Ok(ephemeral_error("Unsupported interaction.")),
     }
 }

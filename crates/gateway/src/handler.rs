@@ -1,5 +1,4 @@
 use anyhow::Result;
-use metrics;
 use std::sync::Arc;
 use tracing::warn;
 use twilight_gateway::Event;
@@ -35,11 +34,10 @@ pub async fn handle_event(
     application_id: Id<ApplicationMarker>,
     state: &Arc<AppState>,
 ) -> Result<()> {
-    if let Event::InteractionCreate(interaction) = event {
-        if let Err(err) = handle_interaction(interaction.0, http, application_id, state).await {
+    if let Event::InteractionCreate(interaction) = event
+        && let Err(err) = handle_interaction(interaction.0, http, application_id, state).await {
             warn!(?err, ?shard_id, "interaction handler returned error");
         }
-    }
     Ok(())
 }
 
@@ -51,6 +49,7 @@ enum ComponentAction {
     Current(String),
     Writeups(String),
     Upcoming(String),
+    Event(String),
 }
 
 impl FromStr for ComponentAction {
@@ -64,6 +63,7 @@ impl FromStr for ComponentAction {
             "current" => Ok(Self::Current(rest.to_string())),
             "writeups" => Ok(Self::Writeups(rest.to_string())),
             "upcoming" => Ok(Self::Upcoming(rest.to_string())),
+            "event" => Ok(Self::Event(rest.to_string())),
             _ => Err(()),
         }
     }
@@ -196,6 +196,9 @@ async fn handle_interaction(
                     ComponentAction::Upcoming(_) => {
                         commands::upcoming::handle_component(state.events.as_ref(), data).await
                     }
+                    ComponentAction::Event(_) => {
+                        commands::event::handle_component(state, guild_id_str.as_deref(), &data.custom_id).await
+                    }
                 },
                 Err(_) => Err(CtfError::InvalidInput("Unknown message component".into())),
             }
@@ -221,7 +224,7 @@ async fn handle_interaction(
     let (command_name, kind) = match &interaction.data {
         Some(InteractionData::ApplicationCommand(data)) => (data.name.as_str(), "slash"),
         Some(InteractionData::MessageComponent(data)) => (
-            data.custom_id.splitn(2, ':').next().unwrap_or("component"),
+            data.custom_id.split(':').next().unwrap_or("component"),
             "component",
         ),
         _ => ("unknown", "unknown"),
