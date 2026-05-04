@@ -14,6 +14,7 @@ pub fn parse_u16_env(key: &str) -> Option<u16> {
     env::var(key).ok().and_then(|v| v.parse().ok())
 }
 
+#[allow(dead_code)]
 pub fn format_utc(time: DateTime<Utc>) -> String {
     time.format("%Y-%m-%d %H:%M UTC").to_string()
 }
@@ -32,6 +33,7 @@ pub fn get_string_option<'a>(options: &'a [CommandDataOption], name: &str) -> Op
     })
 }
 
+#[allow(dead_code)]
 pub fn get_int_option(options: &[CommandDataOption], name: &str) -> Option<i64> {
     options.iter().find(|o| o.name == name).and_then(|o| {
         if let CommandOptionValue::Integer(v) = o.value {

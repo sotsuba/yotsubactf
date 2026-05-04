@@ -25,6 +25,7 @@ pub const MAX_PAGE_SIZE: i64 = 25;
 
 pub struct CtfEmbed(shared::CtfEmbed);
 
+#[allow(dead_code)]
 impl CtfEmbed {
     pub fn from_shared(inner: shared::CtfEmbed) -> Self {
         Self(inner)
@@ -271,6 +272,7 @@ pub fn ephemeral_embed(embed: Embed) -> InteractionResponse {
     }
 }
 
+#[allow(dead_code)]
 pub fn embed_reply(embed: Embed) -> InteractionResponse {
     InteractionResponse {
         kind: InteractionResponseType::ChannelMessageWithSource,

@@ -16,6 +16,7 @@ use std::sync::Arc;
 use governor::{Quota, RateLimiter, state::keyed::DefaultKeyedStateStore};
 use std::num::NonZeroU32;
 
+#[allow(dead_code)]
 pub type UserRateLimiter =
     RateLimiter<u64, DefaultKeyedStateStore<u64>, governor::clock::DefaultClock>;
 
@@ -36,6 +37,7 @@ pub struct AppState {
 }
 
 impl AppState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         events: Arc<dyn ReadCtfRepository>,
         guilds: Arc<dyn GuildRepository>,

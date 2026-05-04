@@ -1,6 +1,7 @@
 use chrono::{DateTime, Duration, Utc};
 
 pub const MAX_FIRE_COUNT: i32 = 60;
+#[allow(dead_code)]
 pub const MAX_ACTIVE_RECURRING: i64 = 10;
 pub const MAX_REMINDER_DAYS: i64 = 365;
 pub const MAX_PENDING_REMINDERS: usize = 10;
@@ -20,6 +21,7 @@ pub enum ReminderValidationError {
     #[error("Message must be 200 characters or less.")]
     MessageTooLong,
     #[error("Reminder time is too far in the future (max 365 days).")]
+    #[allow(dead_code)]
     TimeTooFar,
 }
 
