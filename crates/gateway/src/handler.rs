@@ -10,7 +10,7 @@ use twilight_model::id::Id;
 use twilight_model::id::marker::ApplicationMarker;
 
 use crate::commands;
-use crate::embed::{ephemeral_embed, ephemeral_error, CtfEmbed};
+use crate::embed::{CtfEmbed, ephemeral_embed, ephemeral_error};
 use crate::state::AppState;
 use shared::{CtfError, CtfResult, ReadCtfRepository, ReminderRepository};
 
@@ -47,12 +47,12 @@ use std::str::FromStr;
 enum ComponentAction {
     Remind(String),
     ReminderList(String),
-    Current(String),
-    Upcoming(String),
+    Current(()),
+    Upcoming(()),
     EventUpcoming(String),
     EventCurrent(String),
     EventCompleted(String),
-    Writeups(String),
+    Writeups(()),
 }
 
 impl FromStr for ComponentAction {
@@ -63,9 +63,9 @@ impl FromStr for ComponentAction {
         match name {
             "remind" => Ok(Self::Remind(rest.to_string())),
             "reminder_list" => Ok(Self::ReminderList(rest.to_string())),
-            "current" => Ok(Self::Current(rest.to_string())),
-            "writeups" => Ok(Self::Writeups(rest.to_string())),
-            "upcoming" => Ok(Self::Upcoming(rest.to_string())),
+            "current" => Ok(Self::Current(())),
+            "writeups" => Ok(Self::Writeups(())),
+            "upcoming" => Ok(Self::Upcoming(())),
             "event" => {
                 let (sub, rest) = rest.split_once(':').unwrap_or((rest, ""));
                 match sub {
@@ -209,14 +209,14 @@ async fn handle_interaction(
                         )
                         .await
                     }
-                    ComponentAction::Current(rest) => {
-                        commands::current::handle_component(state.events.as_ref(), &rest).await
+                    ComponentAction::Current(_) => {
+                        commands::current::handle_component(state.events.as_ref(), data).await
                     }
-                    ComponentAction::Writeups(rest) => {
-                        commands::writeups::handle_component(state, &rest).await
+                    ComponentAction::Writeups(_) => {
+                        commands::writeups::handle_component(state, data).await
                     }
-                    ComponentAction::Upcoming(rest) => {
-                        commands::upcoming::handle_component(state.events.as_ref(), &rest).await
+                    ComponentAction::Upcoming(_) => {
+                        commands::upcoming::handle_component(state.events.as_ref(), data).await
                     }
                     ComponentAction::EventUpcoming(rest) => {
                         commands::event::upcoming::handle_component(state.events.as_ref(), &rest)
@@ -267,7 +267,7 @@ async fn handle_interaction(
             Ok(())
         }
         Err(err) => {
-            let response = ephemeral_error(err.to_string());
+            let response = ephemeral_error(&err.to_string());
             let _ = http
                 .interaction(application_id)
                 .create_response(interaction.id, &interaction.token, &response)
@@ -317,9 +317,9 @@ async fn handle_remind_component(
                 .build();
             Ok(ephemeral_embed(embed))
         }
-        shared::CreateReminderOutcome::AlreadyExists => {
-            Ok(ephemeral_error("You already have a reminder for this event."))
-        }
+        shared::CreateReminderOutcome::AlreadyExists => Ok(ephemeral_error(
+            "You already have a reminder for this event.",
+        )),
         shared::CreateReminderOutcome::QuotaExceeded => Ok(ephemeral_error(
             "You have too many active reminders. Please delete some before adding more.",
         )),
@@ -329,9 +329,12 @@ async fn handle_remind_component(
 fn get_interaction_name(interaction: &Interaction) -> String {
     match interaction.data {
         Some(InteractionData::ApplicationCommand(ref data)) => data.name.clone(),
-        Some(InteractionData::MessageComponent(ref data)) => {
-            data.custom_id.split(':').next().unwrap_or("component").to_string()
-        }
+        Some(InteractionData::MessageComponent(ref data)) => data
+            .custom_id
+            .split(':')
+            .next()
+            .unwrap_or("component")
+            .to_string(),
         _ => "unknown".to_string(),
     }
 }

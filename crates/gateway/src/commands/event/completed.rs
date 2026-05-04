@@ -1,6 +1,6 @@
 //! `/event completed` subcommand + all its button interactions.
 
-use crate::embed::{ephemeral_error, paged_response, CtfEmbed, PaginationNav, MAX_PAGE_SIZE};
+use crate::embed::{CtfEmbed, MAX_PAGE_SIZE, PaginationNav, ephemeral_error, paged_response};
 use crate::state::AppState;
 use shared::{CompletedFilter, CtfEvent, CtfResult, TeamResult};
 use std::collections::HashMap;
@@ -157,9 +157,7 @@ fn build_response(
                     _ => &place_str,
                 };
 
-                desc.push_str(&format!(
-                    "  › Team: {ordinal}{total_str}{score_str}\n"
-                ));
+                desc.push_str(&format!("  › Team: {ordinal}{total_str}{score_str}\n"));
             }
             desc.push('\n');
         }
@@ -229,7 +227,11 @@ fn parse_filter(options: &[CommandDataOption]) -> CompletedFilter {
 fn parse_page_rest(rest: &str) -> Option<(i64, i64, CompletedFilter)> {
     let mut parts = rest.splitn(3, ':');
     let page: i64 = parts.next()?.parse().ok().filter(|&p| p > 0)?;
-    let limit: i64 = parts.next()?.parse().ok().map(|v: i64| v.clamp(1, MAX_PAGE_SIZE))?;
+    let limit: i64 = parts
+        .next()?
+        .parse()
+        .ok()
+        .map(|v: i64| v.clamp(1, MAX_PAGE_SIZE))?;
     let filter = parts.next().map(qs_to_filter).unwrap_or_default();
     Some((page, limit, filter))
 }

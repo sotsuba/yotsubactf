@@ -1,0 +1,25 @@
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+.githooks
+
+# ── CI / tooling ──────────────────────────────────────────────────────────────
+.github
+.env*
+!.env.example
+Makefile
+cliff.toml
+changes.log
+
+# ── Monitoring configs (không cần trong image) ────────────────────────────────
+monitoring/
+
+# ── Docs ──────────────────────────────────────────────────────────────────────
+README.md
+*.md
+
+# ── Rust build artifacts ──────────────────────────────────────────────────────
+target/
+
+# ── Docker compose files ──────────────────────────────────────────────────────
+docker-compose*.yml

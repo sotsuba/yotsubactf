@@ -7,7 +7,6 @@ pub mod upcoming;
 use super::{CommandContext, SlashCommand};
 use crate::embed::ephemeral_error;
 use async_trait::async_trait;
-use crate::state::AppState;
 use shared::{CtfError, CtfResult};
 use twilight_model::application::command::CommandType;
 use twilight_model::application::interaction::application_command::CommandOptionValue;
@@ -45,8 +44,16 @@ impl SlashCommand for EventCommand {
                             ])
                             .build(),
                     )
-                    .option(NumberBuilder::new("weight_min", "Min weight").min_value(0.0).build())
-                    .option(NumberBuilder::new("weight_max", "Max weight").min_value(0.0).build())
+                    .option(
+                        NumberBuilder::new("weight_min", "Min weight")
+                            .min_value(0.0)
+                            .build(),
+                    )
+                    .option(
+                        NumberBuilder::new("weight_max", "Max weight")
+                            .min_value(0.0)
+                            .build(),
+                    )
                     .option(BooleanBuilder::new("onsite", "true=onsite, false=online").build())
                     .option(
                         StringBuilder::new("sort_by", "Sort order")
@@ -77,17 +84,29 @@ impl SlashCommand for EventCommand {
                             .build(),
                     )
                     .option(StringBuilder::new("format", "Filter by format").build())
-                    .option(NumberBuilder::new("weight_min", "Min weight").min_value(0.0).build())
+                    .option(
+                        NumberBuilder::new("weight_min", "Min weight")
+                            .min_value(0.0)
+                            .build(),
+                    )
                     .build(),
             )
             .option(
                 SubCommandBuilder::new("countdown", "Countdown to a CTF")
-                    .option(StringBuilder::new("query", "CTF name").required(true).build())
+                    .option(
+                        StringBuilder::new("query", "CTF name")
+                            .required(true)
+                            .build(),
+                    )
                     .build(),
             )
             .option(
                 SubCommandBuilder::new("info", "Details about a CTF")
-                    .option(StringBuilder::new("query", "CTF name").required(true).build())
+                    .option(
+                        StringBuilder::new("query", "CTF name")
+                            .required(true)
+                            .build(),
+                    )
                     .build(),
             )
             .build()
@@ -110,19 +129,5 @@ impl SlashCommand for EventCommand {
             "info" => info::handle(ctx.state.events.as_ref(), opts).await,
             _ => Ok(ephemeral_error("Unknown subcommand.")),
         }
-    }
-}
-
-pub async fn handle_component(
-    state: &AppState,
-    guild_id: Option<&str>,
-    custom_id: &str,
-) -> CtfResult<InteractionResponse> {
-    let parts: Vec<&str> = custom_id.splitn(3, ':').collect();
-    match parts.as_slice() {
-        ["event", "upcoming", _] => upcoming::handle_component(state, custom_id).await,
-        ["event", "current", _] => current::handle_component(state, custom_id).await,
-        ["event", "completed", _] => completed::handle_component(state, guild_id, custom_id).await,
-        _ => Ok(ephemeral_error("Unsupported interaction.")),
     }
 }

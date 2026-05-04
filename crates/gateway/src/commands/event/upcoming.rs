@@ -8,8 +8,8 @@
 //! | `event:upcoming:join:<ctftime_id>`| Show ephemeral join-links for that CTF event.    |
 
 use crate::embed::{
-    ephemeral_error, join_community_response, paged_response, CtfEmbed, PaginationNav,
-    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
+    CtfEmbed, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationNav, ephemeral_error,
+    join_community_response, paged_response,
 };
 use crate::state::AppState;
 use crate::util::truncate;

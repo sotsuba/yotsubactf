@@ -1,7 +1,7 @@
 //! `/event current` subcommand + all its button interactions.
 
 use crate::embed::{
-    ephemeral_error, paged_response, CtfEmbed, PaginationNav, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
+    CtfEmbed, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationNav, ephemeral_error, paged_response,
 };
 use crate::state::AppState;
 use crate::util::truncate;
