@@ -279,11 +279,11 @@ pub struct InMemoryReminderRepository {
 
 #[async_trait]
 impl ReminderRepository for InMemoryReminderRepository {
-    async fn create(&self, reminder: &Reminder) -> Result<Reminder> {
+    async fn create(&self, reminder: &Reminder) -> Result<crate::models::CreateReminderOutcome> {
         let mut r = reminder.clone();
         r.id = Uuid::new_v4();
         self.reminders.write().await.push(r.clone());
-        Ok(r)
+        Ok(crate::models::CreateReminderOutcome::Created)
     }
 
     async fn fetch_due(&self, now: DateTime<Utc>) -> Result<Vec<Reminder>> {
