@@ -5,8 +5,8 @@ use crate::contracts::{
 };
 use crate::error::{CtfError, CtfResult as Result};
 use crate::models::{
-    CommandLog, CtfEvent, DigestConfig, DigestTarget, PaginatedEvents, Reminder, ReminderKind,
-    TeamResult, TrackedTeam, UpsertStatus, Writeup, WriteupSearchResult,
+    CtfEvent, DigestConfig, DigestTarget, PaginatedEvents, Reminder, ReminderKind, TeamResult,
+    TrackedTeam, UpsertStatus, Writeup, WriteupSearchResult,
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -37,30 +37,29 @@ impl ReadCtfRepository for InMemoryCtfRepository {
             if e.end_time < now {
                 return false;
             }
-            if let Some(ref fmt) = filter.format {
-                if !e
+            if let Some(ref fmt) = filter.format
+                && !e
                     .format
                     .as_deref()
                     .map(|f| f.to_lowercase().contains(&fmt.to_lowercase()))
                     .unwrap_or(false)
-                {
-                    return false;
-                }
+            {
+                return false;
             }
-            if let Some(w) = filter.min_weight {
-                if e.weight.unwrap_or(0.0) < w {
-                    return false;
-                }
+            if let Some(w) = filter.min_weight
+                && e.weight.unwrap_or(0.0) < w
+            {
+                return false;
             }
-            if let Some(w) = filter.max_weight {
-                if e.weight.unwrap_or(0.0) > w {
-                    return false;
-                }
+            if let Some(w) = filter.max_weight
+                && e.weight.unwrap_or(0.0) > w
+            {
+                return false;
             }
-            if let Some(onsite) = filter.onsite {
-                if e.is_onsite != onsite {
-                    return false;
-                }
+            if let Some(onsite) = filter.onsite
+                && e.is_onsite != onsite
+            {
+                return false;
             }
             true
         });
@@ -308,7 +307,7 @@ impl ReminderRepository for InMemoryReminderRepository {
         let mut results: Vec<Reminder> = reminders
             .iter()
             .filter(|r| r.user_id == user_id && r.sent_count == 0)
-            .filter(|r| cursor.map_or(true, |c| r.remind_at > c))
+            .filter(|r| cursor.is_none_or(|c| r.remind_at > c))
             .cloned()
             .collect();
 

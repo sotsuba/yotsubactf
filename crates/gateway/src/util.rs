@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use std::env;
 use twilight_model::id::Id;
 
@@ -14,9 +13,11 @@ pub fn parse_u16_env(key: &str) -> Option<u16> {
     env::var(key).ok().and_then(|v| v.parse().ok())
 }
 
+/*
 pub fn format_utc(time: DateTime<Utc>) -> String {
     time.format("%Y-%m-%d %H:%M UTC").to_string()
 }
+*/
 
 use twilight_model::application::interaction::application_command::{
     CommandDataOption, CommandOptionValue,
@@ -32,6 +33,7 @@ pub fn get_string_option<'a>(options: &'a [CommandDataOption], name: &str) -> Op
     })
 }
 
+/*
 pub fn get_int_option(options: &[CommandDataOption], name: &str) -> Option<i64> {
     options.iter().find(|o| o.name == name).and_then(|o| {
         if let CommandOptionValue::Integer(v) = o.value {
@@ -41,6 +43,7 @@ pub fn get_int_option(options: &[CommandDataOption], name: &str) -> Option<i64> 
         }
     })
 }
+*/
 
 /// Truncate a string to a maximum number of characters (not bytes) safely.
 /// If truncated, appends an ellipsis.

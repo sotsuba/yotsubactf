@@ -101,7 +101,7 @@ pub async fn handle(
     let limit = parse_limit(options);
     let filter = parse_filter(options);
     let paginated = fetch_page(repo, 1, limit, &filter).await?;
-    let has_next = paginated.events.len() as i64 >= limit && (1 * limit < paginated.total_count);
+    let has_next = limit < paginated.total_count;
     Ok(build_paged_response(
         &paginated.events,
         1,
@@ -142,7 +142,7 @@ async fn handle_page_component(
         None => return Ok(ephemeral_error("Unsupported interaction.")),
     };
     let paginated = fetch_page(repo, page, limit, &filter).await?;
-    let has_next = paginated.events.len() as i64 >= limit && (page * limit < paginated.total_count);
+    let has_next = page * limit < paginated.total_count;
     Ok(build_paged_response(
         &paginated.events,
         page,
@@ -184,6 +184,7 @@ async fn fetch_page(
     repo.list_upcoming(limit, offset, filter).await
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_paged_response(
     events: &[CtfEvent],
     page: i64,

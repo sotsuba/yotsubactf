@@ -75,7 +75,7 @@ pub async fn fetch_recent_writeups(client: &Client) -> CtfResult<Vec<Writeup>> {
         let ctftime_id = url
             .trim_end_matches('/')
             .split('/')
-            .last()
+            .next_back()
             .and_then(|s| s.parse::<i64>().ok())
             .unwrap_or(0);
 

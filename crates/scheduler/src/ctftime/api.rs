@@ -53,14 +53,14 @@ pub async fn request_with_retry(
         .increment(1);
 
         // Retry on 429 (Rate Limit) and 5xx (Server Error)
-        if status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error() {
-            if retries < max_retries {
-                warn!(?status, %url, ?backoff, "CTFtime API error, retrying...");
-                tokio::time::sleep(backoff).await;
-                retries += 1;
-                backoff *= 2;
-                continue;
-            }
+        if (status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error())
+            && retries < max_retries
+        {
+            warn!(?status, %url, ?backoff, "CTFtime API error, retrying...");
+            tokio::time::sleep(backoff).await;
+            retries += 1;
+            backoff *= 2;
+            continue;
         }
 
         return Ok(resp);

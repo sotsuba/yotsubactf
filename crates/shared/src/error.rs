@@ -47,12 +47,12 @@ impl CtfError {
                 } else {
                     "Please try again later.".to_string()
                 };
-                CtfEmbed::error("Rate Limited").description(&msg)
+                CtfEmbed::error("Rate Limited").description(msg)
             }
             CtfError::Timeout => CtfEmbed::error("Request Timeout")
                 .description("The request took too long. Please try again."),
             CtfError::ExternalApi { status, message } => {
-                CtfEmbed::error("Upstream Error").description(&format!("Error {status}: {message}"))
+                CtfEmbed::error("Upstream Error").description(format!("Error {status}: {message}"))
             }
             CtfError::Serialization(_) => CtfEmbed::error("Data Error")
                 .description("Failed to process data from external service."),

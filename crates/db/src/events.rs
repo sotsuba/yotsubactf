@@ -73,20 +73,20 @@ impl ReadCtfRepository for PostgresCtfRepository {
         offset: i64,
         filter: &UpcomingFilter,
     ) -> Result<PaginatedEvents> {
-        if let Some(ref client) = self.redis {
-            if let Ok(mut conn) = client.get_multiplexed_async_connection().await {
-                // Generate a simple hash/key for the filter.
-                let filter_key = serde_json::to_string(filter).unwrap_or_default();
-                let cache_key = format!("upcoming:{}:o{}:l{}", filter_key, offset, limit);
+        if let Some(ref client) = self.redis
+            && let Ok(mut conn) = client.get_multiplexed_async_connection().await
+        {
+            // Generate a simple hash/key for the filter.
+            let filter_key = serde_json::to_string(filter).unwrap_or_default();
+            let cache_key = format!("upcoming:{filter_key}:o{offset}:l{limit}");
 
-                if let Ok(cached) = conn.get::<_, String>(&cache_key).await {
-                    if let Ok(res) = serde_json::from_str::<PaginatedEvents>(&cached) {
-                        metrics::counter!(shared::metrics::DB_REDIS_HITS_TOTAL, "repo" => "ctf_events", "op" => "list_upcoming").increment(1);
-                        return Ok(res);
-                    }
-                }
-                metrics::counter!(shared::metrics::DB_REDIS_MISSES_TOTAL, "repo" => "ctf_events", "op" => "list_upcoming").increment(1);
+            if let Ok(cached) = conn.get::<_, String>(&cache_key).await
+                && let Ok(res) = serde_json::from_str::<PaginatedEvents>(&cached)
+            {
+                metrics::counter!(shared::metrics::DB_REDIS_HITS_TOTAL, "repo" => "ctf_events", "op" => "list_upcoming").increment(1);
+                return Ok(res);
             }
+            metrics::counter!(shared::metrics::DB_REDIS_MISSES_TOTAL, "repo" => "ctf_events", "op" => "list_upcoming").increment(1);
         }
 
         // Build the query dynamically using QueryBuilder so parameter numbering
@@ -136,15 +136,15 @@ impl ReadCtfRepository for PostgresCtfRepository {
             total_count,
         };
 
-        if let Some(ref client) = self.redis {
-            if let Ok(mut conn) = client.get_multiplexed_async_connection().await {
-                let filter_key = serde_json::to_string(filter).unwrap_or_default();
-                let cache_key = format!("upcoming:{}:o{}:l{}", filter_key, offset, limit);
-                if let Ok(serialized) = serde_json::to_string(&res) {
-                    let _ = conn.set_ex::<_, _, ()>(&cache_key, serialized, 300).await;
-                } else {
-                    tracing::warn!(?res, "Failed to serialize PaginatedEvents for cache");
-                }
+        if let Some(ref client) = self.redis
+            && let Ok(mut conn) = client.get_multiplexed_async_connection().await
+        {
+            let filter_key = serde_json::to_string(filter).unwrap_or_default();
+            let cache_key = format!("upcoming:{filter_key}:o{offset}:l{limit}");
+            if let Ok(serialized) = serde_json::to_string(&res) {
+                let _ = conn.set_ex::<_, _, ()>(&cache_key, serialized, 300).await;
+            } else {
+                tracing::warn!(?res, "Failed to serialize PaginatedEvents for cache");
             }
         }
 
@@ -199,7 +199,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
     }
 
     async fn get_by_title_fuzzy(&self, query: &str) -> Result<Option<CtfEvent>> {
-        let pattern = format!("%{}%", query);
+        let pattern = format!("%{query}%");
 
         let row = sqlx::query_as::<_, DbCtfEvent>(
             r#"
@@ -248,7 +248,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
     }
 
     async fn get_all_by_title_fuzzy(&self, query: &str) -> Result<Option<CtfEvent>> {
-        let pattern = format!("%{}%", query);
+        let pattern = format!("%{query}%");
 
         let row = sqlx::query_as::<_, DbCtfEvent>(
             r#"
@@ -311,7 +311,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
                 description: r.description,
                 social_links,
                 is_onsite: r.is_onsite,
-            }, r.score.unwrap_or(0.0) as f32)
+            }, r.score.unwrap_or(0.0))
         }))
     }
 

@@ -25,37 +25,35 @@ pub async fn run_once(state: &SharedState) -> CtfResult<()> {
 
     for mut wu in recent {
         // Try to resolve event_id from the database by title matching
-        if let Some(event_name) = &wu.event_name {
-            if let Ok(Some((event, score))) = state
+        if let Some(event_name) = &wu.event_name
+            && let Ok(Some((event, score))) = state
                 .event_repo
                 .get_all_by_title_fuzzy_with_score(event_name, 0.6)
                 .await
-            {
-                info!(
-                    event_name,
-                    matched = event.title,
-                    score,
-                    "Resolved writeup event via fuzzy match"
-                );
-                wu.event_id = event.ctftime_id;
-            }
+        {
+            info!(
+                event_name,
+                matched = event.title,
+                score,
+                "Resolved writeup event via fuzzy match"
+            );
+            wu.event_id = event.ctftime_id;
         }
 
         // If event_name didn't help, try title directly
-        if wu.event_id == 0 {
-            if let Ok(Some((event, score))) = state
+        if wu.event_id == 0
+            && let Ok(Some((event, score))) = state
                 .event_repo
                 .get_all_by_title_fuzzy_with_score(&wu.title, 0.4)
                 .await
-            {
-                info!(
-                    title = wu.title,
-                    matched = event.title,
-                    score,
-                    "Resolved writeup event via title fuzzy match"
-                );
-                wu.event_id = event.ctftime_id;
-            }
+        {
+            info!(
+                title = wu.title,
+                matched = event.title,
+                score,
+                "Resolved writeup event via title fuzzy match"
+            );
+            wu.event_id = event.ctftime_id;
         }
 
         if state.writeup_repo.upsert_writeup(&wu).await? {

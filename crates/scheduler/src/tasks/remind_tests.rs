@@ -4,10 +4,7 @@ mod tests {
     use crate::tasks::SchedulerTask;
     use crate::tasks::remind::RemindTask;
     use chrono::{Duration, Utc};
-    use shared::contracts::{Notifier, ReminderAdvanceResult, ReminderRepository};
     use shared::models::{Reminder, ReminderKind};
-    use shared::testing::MockNotifier;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_remind_fires_dm_and_deletes_oneshot() {

@@ -2,8 +2,8 @@
 mod tests {
     use crate::commands::reminder::common::create_event_reminder;
     use chrono::{DateTime, Duration, TimeZone, Utc};
-    use shared::contracts::{ReadCtfRepository, ReminderRepository, WriteCtfRepository};
-    use shared::models::{CreateReminderOutcome, CtfEvent, ReminderKind};
+    use shared::contracts::{ReminderRepository, WriteCtfRepository};
+    use shared::models::CtfEvent;
     use shared::testing::{InMemoryCtfRepository, InMemoryReminderRepository};
     use twilight_model::channel::message::MessageFlags;
     use twilight_model::http::interaction::{InteractionResponse, InteractionResponseType};

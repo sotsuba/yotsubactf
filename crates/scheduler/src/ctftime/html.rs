@@ -2,11 +2,12 @@
 //!
 //! Two responsibilities:
 //! 1. `fetch_event_patch` — fetches the CTFTime event page and extracts:
-//!      • Fallback title / description / format / weight when the REST API
-//!        returns blank fields.
-//!      • Social/community invite links found on that page.
-//!    This is the **single** CTFTime fetch per enrichment cycle; callers must
-//!    not separately call the old `fetch_social_links` (removed).
+//! - Fallback title / description / format / weight when the REST API
+//!   returns blank fields.
+//! - Social/community invite links found on that page.
+//!
+//! This is the **single** CTFTime fetch per enrichment cycle; callers must
+//! not separately call the old `fetch_social_links` (removed).
 //!
 //! 2. `fetch_external_social_links` — fetches only the CTF's own website
 //!    (one level deep) for additional invite links.
@@ -151,15 +152,15 @@ async fn fetch_html(client: &Client, url: &str) -> CtfResult<String> {
         });
     }
 
-    if let Some(content_type) = resp.headers().get(reqwest::header::CONTENT_TYPE) {
-        if let Ok(ct) = content_type.to_str() {
-            let ct = ct.to_lowercase();
-            if !ct.contains("text/html") && !ct.contains("application/xhtml+xml") {
-                return Err(CtfError::ExternalApi {
-                    status: status.as_u16(),
-                    message: format!("Non-HTML content type: {}", ct),
-                });
-            }
+    if let Some(content_type) = resp.headers().get(reqwest::header::CONTENT_TYPE)
+        && let Ok(ct) = content_type.to_str()
+    {
+        let ct = ct.to_lowercase();
+        if !ct.contains("text/html") && !ct.contains("application/xhtml+xml") {
+            return Err(CtfError::ExternalApi {
+                status: status.as_u16(),
+                message: format!("Non-HTML content type: {}", ct),
+            });
         }
     }
 
@@ -174,10 +175,10 @@ async fn fetch_html(client: &Client, url: &str) -> CtfResult<String> {
 fn extract_social_links_from_document(document: &Html, found: &mut HashMap<String, SocialLink>) {
     // ── <a href="..."> anchors ────────────────────────────────────────────
     for el in document.select(sel_a_href()) {
-        if let Some(href) = el.value().attr("href") {
-            if let Some(link) = classify_url(href) {
-                found.entry(link.url.clone()).or_insert(link);
-            }
+        if let Some(href) = el.value().attr("href")
+            && let Some(link) = classify_url(href)
+        {
+            found.entry(link.url.clone()).or_insert(link);
         }
     }
 
@@ -341,12 +342,10 @@ fn extract_meta(document: &Html, key: &str) -> Option<String> {
         let value = element.value();
         let matches = value.attr("property").map(|a| a == key).unwrap_or(false)
             || value.attr("name").map(|a| a == key).unwrap_or(false);
-        if matches {
-            if let Some(content) = value.attr("content") {
-                let trimmed = content.trim();
-                if !trimmed.is_empty() {
-                    return Some(trimmed.to_string());
-                }
+        if matches && let Some(content) = value.attr("content") {
+            let trimmed = content.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
             }
         }
     }

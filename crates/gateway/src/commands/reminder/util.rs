@@ -47,6 +47,7 @@ pub fn opt_int_or_zero(
     opt_int(opts, name).unwrap_or(0)
 }
 
+#[allow(dead_code)]
 pub async fn reply_ephemeral(
     http: &twilight_http::Client,
     interaction: &Interaction,

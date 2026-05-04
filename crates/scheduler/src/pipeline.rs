@@ -29,7 +29,7 @@
 use std::sync::Arc;
 
 use reqwest::Client;
-use shared::{CtfError, CtfResult};
+use shared::CtfResult;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use tracing::{error, info, warn};
@@ -131,10 +131,10 @@ pub async fn process_events(
     }
 
     // Invalidate cache if anything changed
-    if stats.inserted > 0 || stats.updated > 0 {
-        if let Err(err) = event_repo.invalidate_upcoming_cache().await {
-            warn!(?err, "Failed to invalidate upcoming cache after batch");
-        }
+    if (stats.inserted > 0 || stats.updated > 0)
+        && let Err(err) = event_repo.invalidate_upcoming_cache().await
+    {
+        warn!(?err, "Failed to invalidate upcoming cache after batch");
     }
 
     info!(?stats, "Process cycle complete");
