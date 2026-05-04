@@ -1,4 +1,7 @@
 services:
+  # ============================================================================
+  # Core Infrastructure
+  # ============================================================================
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -6,10 +9,13 @@ services:
       POSTGRES_USER: ctfbot
       POSTGRES_PASSWORD: ctfbot
       POSTGRES_DB: ctfbot
+    # Bind to localhost only to prevent unintentional public exposure
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ctfbot"]
       interval: 5s
@@ -21,18 +27,30 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:6379:6379"
-    command: redis-server --save 60 1
+    # Persist append-only file (AOF) and RDB snapshots to prevent data loss 
+    # across container restarts or recreations.
+    volumes:
+      - redisdata:/data
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - backend
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # ============================================================================
+  # Application Services
+  # ============================================================================
   scheduler:
     build:
       context: .
       dockerfile: Dockerfile
       target: scheduler
+      # Embed BuildKit cache metadata to accelerate CI/CD pipelines
+      args:
+        BUILDKIT_INLINE_CACHE: "1"
     restart: unless-stopped
     depends_on:
       postgres:
@@ -53,12 +71,16 @@ services:
       HEALTH_PORT: 8085
     ports:
       - "127.0.0.1:8086:8085"
+    networks:
+      - backend
 
   gateway:
     build:
       context: .
       dockerfile: Dockerfile
       target: gateway
+      args:
+        BUILDKIT_INLINE_CACHE: "1"
     restart: unless-stopped
     depends_on:
       postgres:
@@ -75,15 +97,24 @@ services:
       RUST_LOG: ${RUST_LOG:-info}
       HEALTH_PORT: 8085
     ports:
-      - "127.0.0.1:8085:8085" # Metrics / Health
+      - "127.0.0.1:8085:8085"
+    networks:
+      - backend
 
+  # ============================================================================
+  # Monitoring & Analytics
+  # ============================================================================
   prometheus:
     image: prom/prometheus:v3.1.0
     restart: unless-stopped
     volumes:
-      - ./monitoring/infra/prometheus.yml:/etc/prometheus/prometheus.yml
+      # Mount configuration as read-only (:ro) for security
+      - ./monitoring/infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "127.0.0.1:9090:9090"
+    networks:
+      - monitoring
+      - backend
 
   grafana:
     image: grafana/grafana:11.4.0
@@ -100,6 +131,8 @@ services:
       - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
     depends_on:
       - prometheus
+    networks:
+      - monitoring
 
   metabase:
     image: metabase/metabase:v0.51.1
@@ -108,10 +141,30 @@ services:
       - "127.0.0.1:3001:3000"
     volumes:
       - metabase_data:/metabase-data
+    # Bypass default local H2 database in favor of Postgres for production-grade reliability
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ctfbot
+      MB_DB_PORT: 5432
+      MB_DB_USER: ctfbot
+      MB_DB_PASS: ctfbot
+      MB_DB_HOST: postgres
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+      - monitoring
+
+# ============================================================================
+# Global Definitions
+# ============================================================================
+networks:
+  backend:
+  monitoring:
 
 volumes:
   pgdata:
+  redisdata:
   grafdata:
   metabase_data:
