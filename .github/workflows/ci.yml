@@ -6,10 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   SQLX_OFFLINE: "true"
-  RUST_VERSION: "1.88"
+  RUST_VERSION: "1.95"
+  REGISTRY: ghcr.io
 
 jobs:
   check:
@@ -27,7 +32,6 @@ jobs:
       - name: Cache Rust deps
         uses: Swatinem/rust-cache@v2
         with:
-          # Cache key includes Rust version to invalidate on toolchain update
           key: "v1-${{ env.RUST_VERSION }}"
 
       - name: cargo fmt
@@ -42,7 +46,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: check           # only run if check passes
+    needs: check
 
     services:
       postgres:
@@ -54,7 +58,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U ctfbot"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
@@ -79,30 +83,29 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
 
-      - name: Cache Rust deps
+      - name: Cache Rust deps (includes sqlx-cli)
         uses: Swatinem/rust-cache@v2
         with:
           key: "v1-${{ env.RUST_VERSION }}"
+          cache-directories: "~/.cargo/bin"
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres --locked
+        run: |
+          # Chỉ install nếu chưa có (cache hit)
+          which sqlx || cargo install sqlx-cli --no-default-features --features postgres --locked
 
       - name: Run migrations
         run: sqlx migrate run --source migrations
         env:
           SQLX_OFFLINE: "false"
 
-      - name: cargo test (full workspace, includes sqlx::test)
+      - name: cargo test
         run: cargo test --workspace
         env:
           SQLX_OFFLINE: "false"
-          # sqlx::test spawns its own Postgres connections via DATABASE_URL
 
       - name: Verify sqlx offline data is synced
-        # If dev forgets to run 'make prepare' after query changes,
-        # this step will fail with a clear message.
-        run: |
-          cargo sqlx prepare --workspace --check
+        run: cargo sqlx prepare --workspace --check
         env:
           SQLX_OFFLINE: "false"
 
@@ -114,7 +117,11 @@ jobs:
 
     permissions:
       contents: read
-      packages: write   # to push to ghcr.io
+      packages: write
+
+    strategy:
+      matrix:
+        target: [gateway, scheduler]
 
     steps:
       - uses: actions/checkout@v4
@@ -125,26 +132,16 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push gateway
+      - name: Build and push ${{ matrix.target }}
         uses: docker/build-push-action@v5
         with:
           context: .
-          target: gateway
+          target: ${{ matrix.target }}
           push: true
-          tags: ghcr.io/${{ github.repository }}/gateway:latest
-          cache-from: type=gha,scope=gateway
-          cache-to: type=gha,scope=gateway,mode=max
-
-      - name: Build and push scheduler
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: scheduler
-          push: true
-          tags: ghcr.io/${{ github.repository }}/scheduler:latest
-          cache-from: type=gha,scope=scheduler
-          cache-to: type=gha,scope=scheduler,mode=max
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.target }}:latest
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,scope=${{ matrix.target }},mode=max
