@@ -1,16 +1,41 @@
 [package]
-name = "gateway"
+name    = "gateway"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = { workspace = true }
-dotenvy = { workspace = true }
-tracing = { workspace = true }
+anyhow             = { workspace = true }
+dotenvy            = { workspace = true }
+tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
-tokio = { workspace = true }
-twilight-gateway = { workspace = true }
-twilight-http = { workspace = true }
-twilight-model = { workspace = true }
+tokio              = { workspace = true }
+chrono             = { workspace = true }
+serde_json         = { workspace = true }
+uuid               = { workspace = true }
+shared             = { path = "../shared" }
+db                 = { path = "../db" }
+twilight-gateway      = { workspace = true }
+twilight-http         = { workspace = true }
+twilight-model        = { workspace = true }
 twilight-interactions = { workspace = true }
-twilight-util = { workspace = true }
+twilight-util         = { workspace = true }
+async-trait  = { workspace = true }
+reqwest      = { workspace = true }
+urlencoding  = "2"
+serde        = { workspace = true, features = ["derive"] }
+moka         = { workspace = true }
+base64       = "0.22"
+hex          = "0.4"
+data-encoding = "2"
+md-5         = "0.10"
+sha1         = "0.10"
+sha2         = "0.10"
+digest       = "0.10"
+axum = { workspace = true }
+metrics = "0.24.5"
+metrics-exporter-prometheus = "0.18.3"
+governor = "0.10.4"
+thiserror.workspace = true
+
+[dev-dependencies]
+shared = { path = "../shared", features = ["testing"] }

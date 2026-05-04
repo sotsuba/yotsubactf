@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, guild_id, ctftime_team_id, team_name, created_at FROM tracked_teams WHERE guild_id = $1",
+  "query": "SELECT id, guild_id, ctftime_team_id, team_name, created_at, updated_at FROM tracked_teams WHERE guild_id = $1",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -39,8 +44,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "74b1a2475b75619e78e1fbbc11f9b6773088bc6cb6c9c3fe7515778c847f7dd6"
+  "hash": "14d8860642f3bf533cc629e7329cfac9dab726b850b5caaa0877f9d518038066"
 }

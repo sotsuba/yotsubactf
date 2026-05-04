@@ -1,0 +1,109 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO reminders (\n                user_id, kind, ctftime_id, event_title, event_start_at,\n                message, remind_at, interval_secs, repeat_until, fire_count_max\n            )\n            SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10\n            WHERE $2 != 'recurring' \n               OR (SELECT COUNT(*) FROM reminders WHERE user_id = $1 AND kind = 'recurring') < 10\n            RETURNING id, user_id, kind as \"kind: DbReminderKind\", ctftime_id, event_title, event_start_at,\n                      message, remind_at, interval_secs, repeat_until, fire_count_max,\n                      sent_count, last_sent_at, created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind: DbReminderKind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "ctftime_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "event_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "event_start_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "remind_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "interval_secs",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "repeat_until",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "fire_count_max",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "sent_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "last_sent_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Text",
+        "Timestamptz",
+        "Text",
+        "Timestamptz",
+        "Int8",
+        "Timestamptz",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "1df89d1d8cdcf3b3f9f5b0e500d32a84e97f42fc55bf6a0d54d85fb4dbca8d42"
+}

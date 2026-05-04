@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO tracked_teams (guild_id, ctftime_team_id, team_name)\n               VALUES ($1, $2, $3)\n               ON CONFLICT (guild_id) \n               DO UPDATE SET ctftime_team_id = EXCLUDED.ctftime_team_id, \n                             team_name = EXCLUDED.team_name,\n                             updated_at = NOW()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "41ac554b06c2aae72c98310cf512e18f6e714edb8a67417592e827e0c0f24901"
+}

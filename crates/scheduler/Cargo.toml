@@ -1,6 +1,49 @@
 [package]
-name = "scheduler"
+name    = "scheduler"
 version = "0.1.0"
 edition = "2024"
+default-run = "scheduler"
+
+# ── Crate targets ─────────────────────────────────────────────────────────────
+#
+# The crate is a unified scheduler that can be run in two modes:
+#
+#   scheduler         — (default) long-running process that manages all background 
+#                       tasks (scraping, reminders, results, writeups, digest).
+#
+#   One-shot tasks    — run specific tasks then exit.
+#                       Run with: cargo run -p scheduler -- --task <scrape|results|remind|writeups|digest>
+
+[lib]
+name = "scheduler"
+path = "src/lib.rs"
+
+# Default src/main.rs is the unified scheduler.
 
 [dependencies]
+shared             = { path = "../shared" }
+tokio              = { workspace = true }
+anyhow             = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+dotenvy            = { workspace = true }
+db                 = { path = "../db" }
+reqwest            = { workspace = true }
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+chrono             = { workspace = true }
+html_scraper       = { package = "scraper", version = "0.19" }
+rss                = "2.0"
+uuid               = { workspace = true }
+twilight-model     = { workspace = true }
+twilight-util      = { workspace = true }
+regex              = "1"
+axum = { workspace = true }
+async-trait = { workspace = true }
+metrics = "0.24.5"
+metrics-exporter-prometheus = "0.18.3"
+url = "2.5.8"
+
+[dev-dependencies]
+tokio        = { workspace = true }
+shared = { path = "../shared", features = ["testing"] }
