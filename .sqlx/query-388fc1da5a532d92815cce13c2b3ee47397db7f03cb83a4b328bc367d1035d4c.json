@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO reminders (\n                user_id, kind, ctftime_id, event_title, event_start_at,\n                message, remind_at, interval_secs, repeat_until, fire_count_max\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Text",
+        "Timestamptz",
+        "Text",
+        "Timestamptz",
+        "Int8",
+        "Timestamptz",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "388fc1da5a532d92815cce13c2b3ee47397db7f03cb83a4b328bc367d1035d4c"
+}

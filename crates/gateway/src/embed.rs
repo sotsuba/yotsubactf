@@ -25,6 +25,7 @@ pub const MAX_PAGE_SIZE: i64 = 25;
 
 pub struct CtfEmbed(shared::CtfEmbed);
 
+#[allow(dead_code)]
 impl CtfEmbed {
     pub fn from_shared(inner: shared::CtfEmbed) -> Self {
         Self(inner)
@@ -45,6 +46,7 @@ impl CtfEmbed {
     pub fn description(self, text: impl Into<String>) -> Self {
         Self(self.0.description(text))
     }
+    #[allow(dead_code)]
     pub fn url(self, url: impl Into<String>) -> Self {
         Self(self.0.url(url))
     }
@@ -54,6 +56,7 @@ impl CtfEmbed {
     pub fn footer(self, text: impl Into<String>) -> Self {
         Self(self.0.footer(text))
     }
+    #[allow(dead_code)]
     pub fn timestamp(self, ts: DateTime<Utc>) -> Self {
         Self(self.0.timestamp(ts))
     }
@@ -271,6 +274,7 @@ pub fn ephemeral_embed(embed: Embed) -> InteractionResponse {
     }
 }
 
+#[allow(dead_code)]
 pub fn embed_reply(embed: Embed) -> InteractionResponse {
     InteractionResponse {
         kind: InteractionResponseType::ChannelMessageWithSource,

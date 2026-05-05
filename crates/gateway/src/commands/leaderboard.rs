@@ -37,10 +37,10 @@ pub async fn handle(
     options: &[CommandDataOption],
 ) -> CtfResult<InteractionResponse> {
     let mut year = chrono::Utc::now().year();
-    if let Some(opt) = options.iter().find(|o| o.name == "year") {
-        if let CommandOptionValue::Integer(y) = &opt.value {
-            year = *y as i32;
-        }
+    if let Some(opt) = options.iter().find(|o| o.name == "year")
+        && let CommandOptionValue::Integer(y) = &opt.value
+    {
+        year = *y as i32;
     }
 
     let entries = if let Some(cached) = state.leaderboard_cache.get(&year).await {

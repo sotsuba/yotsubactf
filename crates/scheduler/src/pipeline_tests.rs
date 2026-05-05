@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::SharedState;
     use crate::pipeline;
     use chrono::{Duration, Utc};
-    use shared::contracts::{CtfEventRepository, GuildRepository, Notifier, WriteCtfRepository};
-    use shared::models::{CtfEvent, UpsertStatus};
+    use shared::contracts::GuildRepository;
+    use shared::models::CtfEvent;
     use shared::testing::{InMemoryCtfRepository, InMemoryGuildRepository, MockNotifier};
     use std::sync::Arc;
 
@@ -26,7 +25,7 @@ mod tests {
         };
 
         let stats = pipeline::process_events(
-            &[event.clone()],
+            std::slice::from_ref(&event),
             event_repo.as_ref(),
             guild_repo.as_ref(),
             notifier.as_ref(),
@@ -61,7 +60,7 @@ mod tests {
 
         // Initial insert
         pipeline::process_events(
-            &[event.clone()],
+            std::slice::from_ref(&event),
             event_repo.as_ref(),
             guild_repo.as_ref(),
             notifier.as_ref(),
@@ -74,7 +73,7 @@ mod tests {
         updated_event.title = "Updated Title".to_string();
 
         let stats = pipeline::process_events(
-            &[updated_event],
+            std::slice::from_ref(&updated_event),
             event_repo.as_ref(),
             guild_repo.as_ref(),
             notifier.as_ref(),

@@ -5,11 +5,11 @@ use crate::contracts::{
 };
 use crate::error::{CtfError, CtfResult as Result};
 use crate::models::{
-    CommandLog, CtfEvent, DigestConfig, DigestTarget, PaginatedEvents, Reminder, ReminderKind,
-    TeamResult, TrackedTeam, UpsertStatus, Writeup, WriteupSearchResult,
+    CtfEvent, DigestConfig, DigestTarget, PaginatedEvents, Reminder, ReminderKind, TeamResult,
+    TrackedTeam, UpsertStatus, Writeup, WriteupSearchResult,
 };
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::RwLock;
@@ -37,30 +37,29 @@ impl ReadCtfRepository for InMemoryCtfRepository {
             if e.end_time < now {
                 return false;
             }
-            if let Some(ref fmt) = filter.format {
-                if !e
+            if let Some(ref fmt) = filter.format
+                && !e
                     .format
                     .as_deref()
                     .map(|f| f.to_lowercase().contains(&fmt.to_lowercase()))
                     .unwrap_or(false)
-                {
-                    return false;
-                }
+            {
+                return false;
             }
-            if let Some(w) = filter.min_weight {
-                if e.weight.unwrap_or(0.0) < w {
-                    return false;
-                }
+            if let Some(w) = filter.min_weight
+                && e.weight.unwrap_or(0.0) < w
+            {
+                return false;
             }
-            if let Some(w) = filter.max_weight {
-                if e.weight.unwrap_or(0.0) > w {
-                    return false;
-                }
+            if let Some(w) = filter.max_weight
+                && e.weight.unwrap_or(0.0) > w
+            {
+                return false;
             }
-            if let Some(onsite) = filter.onsite {
-                if e.is_onsite != onsite {
-                    return false;
-                }
+            if let Some(onsite) = filter.onsite
+                && e.is_onsite != onsite
+            {
+                return false;
             }
             true
         });
@@ -281,11 +280,11 @@ pub struct InMemoryReminderRepository {
 
 #[async_trait]
 impl ReminderRepository for InMemoryReminderRepository {
-    async fn create(&self, reminder: &Reminder) -> Result<Reminder> {
+    async fn create(&self, reminder: &Reminder) -> Result<crate::models::CreateReminderOutcome> {
         let mut r = reminder.clone();
         r.id = Uuid::new_v4();
         self.reminders.write().await.push(r.clone());
-        Ok(r)
+        Ok(crate::models::CreateReminderOutcome::Created)
     }
 
     async fn fetch_due(&self, now: DateTime<Utc>) -> Result<Vec<Reminder>> {
@@ -305,10 +304,15 @@ impl ReminderRepository for InMemoryReminderRepository {
         cursor: Option<DateTime<Utc>>,
     ) -> Result<Vec<Reminder>> {
         let reminders = self.reminders.read().await;
+        let now = Utc::now();
         let mut results: Vec<Reminder> = reminders
             .iter()
-            .filter(|r| r.user_id == user_id && r.sent_count == 0)
-            .filter(|r| cursor.map_or(true, |c| r.remind_at > c))
+            .filter(|r| r.user_id == user_id)
+            .filter(|r| match r.kind {
+                ReminderKind::Recurring => r.repeat_until.is_none_or(|until| r.remind_at <= until),
+                _ => r.last_sent_at.is_none() && r.remind_at >= now - Duration::hours(1),
+            })
+            .filter(|r| cursor.is_none_or(|c| r.remind_at > c))
             .cloned()
             .collect();
 
@@ -322,7 +326,11 @@ impl ReminderRepository for InMemoryReminderRepository {
             .read()
             .await
             .iter()
-            .filter(|r| r.user_id == user_id && matches!(r.kind, ReminderKind::Recurring))
+            .filter(|r| {
+                r.user_id == user_id
+                    && matches!(r.kind, ReminderKind::Recurring)
+                    && r.repeat_until.is_none_or(|until| r.remind_at <= until)
+            })
             .count() as i64)
     }
 
@@ -338,6 +346,7 @@ impl ReminderRepository for InMemoryReminderRepository {
             let new_count = reminder.sent_count + 1;
             reminders[pos].remind_at = next;
             reminders[pos].sent_count = new_count;
+            reminders[pos].last_sent_at = Some(Utc::now());
             Ok(ReminderAdvanceResult::Advanced {
                 next_remind_at: next,
                 sent_count: new_count,

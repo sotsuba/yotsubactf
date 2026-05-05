@@ -29,7 +29,7 @@
 use std::sync::Arc;
 
 use reqwest::Client;
-use shared::{CtfError, CtfResult};
+use shared::CtfResult;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use tracing::{error, info, warn};
@@ -131,10 +131,10 @@ pub async fn process_events(
     }
 
     // Invalidate cache if anything changed
-    if stats.inserted > 0 || stats.updated > 0 {
-        if let Err(err) = event_repo.invalidate_upcoming_cache().await {
-            warn!(?err, "Failed to invalidate upcoming cache after batch");
-        }
+    if (stats.inserted > 0 || stats.updated > 0)
+        && let Err(err) = event_repo.invalidate_upcoming_cache().await
+    {
+        warn!(?err, "Failed to invalidate upcoming cache after batch");
     }
 
     info!(?stats, "Process cycle complete");
@@ -147,8 +147,8 @@ pub async fn process_events(
 /// Enrich a single event in-place.
 ///
 /// Performs at most two outbound fetches:
-///   1. `ctftime.org/event/{id}` — patch data + on-page social links (always)
-///   2. The CTF's own website   — additional social links (when URL is present)
+/// 1. `ctftime.org/event/{id}` — patch data + on-page social links (always)
+/// 2. The CTF's own website   — additional social links (when URL is present)
 ///
 /// Previously the code fetched the CTFTime page *twice* per event (once in
 /// `fetch_event_patch`, once inside `fetch_social_links`). This function

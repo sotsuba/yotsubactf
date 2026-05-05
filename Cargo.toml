@@ -6,6 +6,8 @@ members = [
     "crates/db",
 ]
 resolver = "2"
+[workspace.package]
+edition = "2024"
 
 [workspace.dependencies]
 tokio              = { version = "1", features = ["full"] }

@@ -1,5 +1,4 @@
 use anyhow::Result;
-use metrics;
 use std::sync::Arc;
 use tracing::warn;
 use twilight_gateway::Event;
@@ -19,10 +18,10 @@ use shared::{CtfError, CtfResult, ReadCtfRepository, ReminderRepository};
 macro_rules! log_user_error {
     ($cmd:expr, $guild:expr, $user:expr, $msg:expr) => {
         tracing::debug!(
-            command  = $cmd,
+            command = $cmd,
             guild_id = ?$guild,
-            user_id  = $user,
-            reason   = $msg,
+            user_id = $user,
+            reason = $msg,
             "command rejected (user error)"
         );
     };
@@ -35,10 +34,10 @@ pub async fn handle_event(
     application_id: Id<ApplicationMarker>,
     state: &Arc<AppState>,
 ) -> Result<()> {
-    if let Event::InteractionCreate(interaction) = event {
-        if let Err(err) = handle_interaction(interaction.0, http, application_id, state).await {
-            warn!(?err, ?shard_id, "interaction handler returned error");
-        }
+    if let Event::InteractionCreate(interaction) = event
+        && let Err(err) = handle_interaction(interaction.0, http, application_id, state).await
+    {
+        warn!(?err, ?shard_id, "interaction handler returned error");
     }
     Ok(())
 }
@@ -48,9 +47,10 @@ use std::str::FromStr;
 enum ComponentAction {
     Remind(String),
     ReminderList(String),
-    Current(String),
-    Writeups(String),
-    Upcoming(String),
+    Writeups,
+    EventUpcoming(String),
+    EventCurrent(String),
+    EventCompleted(String),
 }
 
 impl FromStr for ComponentAction {
@@ -61,9 +61,10 @@ impl FromStr for ComponentAction {
         match name {
             "remind" => Ok(Self::Remind(rest.to_string())),
             "reminder_list" => Ok(Self::ReminderList(rest.to_string())),
-            "current" => Ok(Self::Current(rest.to_string())),
-            "writeups" => Ok(Self::Writeups(rest.to_string())),
-            "upcoming" => Ok(Self::Upcoming(rest.to_string())),
+            "writeups" => Ok(Self::Writeups),
+            "event_upcoming" => Ok(Self::EventUpcoming(rest.to_string())),
+            "event_current" => Ok(Self::EventCurrent(rest.to_string())),
+            "event_completed" => Ok(Self::EventCompleted(rest.to_string())),
             _ => Err(()),
         }
     }
@@ -132,7 +133,9 @@ async fn handle_interaction(
                 // Special case for reminder command group to use custom dispatcher
                 commands::reminder::handle_interaction(http, &interaction, state).await
             } else if let Some(cmd) = state.registry.get(data.name.as_str()) {
-                if interaction.kind == twilight_model::application::interaction::InteractionType::ApplicationCommandAutocomplete {
+                if interaction.kind
+                    == twilight_model::application::interaction::InteractionType::ApplicationCommandAutocomplete
+                {
                     match cmd.autocomplete(ctx).await {
                         Ok(Some(res)) => Ok(res),
                         Ok(None) => return Ok(()),
@@ -140,10 +143,19 @@ async fn handle_interaction(
                     }
                 } else {
                     if cmd.requires_guild() && interaction.guild_id.is_none() {
-                        Err(CtfError::InvalidInput("This command must be used in a server.".into()))
+                        Err(CtfError::InvalidInput(
+                            "This command must be used in a server.".into(),
+                        ))
                     } else if cmd.requires_manage_guild() && !member_can_manage_guild {
-                        log_user_error!(data.name, interaction.guild_id.map(|id| id.get()), user_id, "missing MANAGE_GUILD permission");
-                        Err(CtfError::PermissionDenied("You need the **Manage Server** permission to use this command.".into()))
+                        log_user_error!(
+                            data.name,
+                            interaction.guild_id.map(|id| id.get()),
+                            user_id,
+                            "missing MANAGE_GUILD permission"
+                        );
+                        Err(CtfError::PermissionDenied(
+                            "You need the **Manage Server** permission to use this command.".into(),
+                        ))
                     } else {
                         cmd.handle(ctx).await
                     }
@@ -187,14 +199,24 @@ async fn handle_interaction(
                         )
                         .await
                     }
-                    ComponentAction::Current(_) => {
-                        commands::current::handle_component(state.events.as_ref(), data).await
-                    }
-                    ComponentAction::Writeups(_) => {
+                    ComponentAction::Writeups => {
                         commands::writeups::handle_component(state, data).await
                     }
-                    ComponentAction::Upcoming(_) => {
-                        commands::upcoming::handle_component(state.events.as_ref(), data).await
+                    ComponentAction::EventUpcoming(rest) => {
+                        commands::event::upcoming::handle_component(state.events.as_ref(), &rest)
+                            .await
+                    }
+                    ComponentAction::EventCurrent(rest) => {
+                        commands::event::current::handle_component(state.events.as_ref(), &rest)
+                            .await
+                    }
+                    ComponentAction::EventCompleted(rest) => {
+                        commands::event::completed::handle_component(
+                            state,
+                            guild_id_str.as_deref(),
+                            &rest,
+                        )
+                        .await
                     }
                 },
                 Err(_) => Err(CtfError::InvalidInput("Unknown message component".into())),
@@ -205,6 +227,8 @@ async fn handle_interaction(
     };
 
     let business_success = response_result.is_ok();
+    let latency_ms = start.elapsed().as_millis() as i64;
+
     let response = match response_result {
         Ok(res) => res,
         Err(e) => {
@@ -218,15 +242,6 @@ async fn handle_interaction(
         }
     };
 
-    let (command_name, kind) = match &interaction.data {
-        Some(InteractionData::ApplicationCommand(data)) => (data.name.as_str(), "slash"),
-        Some(InteractionData::MessageComponent(data)) => (
-            data.custom_id.splitn(2, ':').next().unwrap_or("component"),
-            "component",
-        ),
-        _ => ("unknown", "unknown"),
-    };
-
     // ── Send Response to Discord ────────────────────────────────────────────
     let discord_result = http
         .interaction(application_id)
@@ -237,41 +252,39 @@ async fn handle_interaction(
     if let Err(err) = &discord_result {
         tracing::error!(
             ?err,
-            command  = command_name,
+            command = get_interaction_name(&interaction),
             guild_id = ?guild_id_str,
-            user_id  = user_id,
+            user_id = user_id,
             "failed to send interaction response to Discord"
         );
     }
 
     // ── Post-execution metrics and logging ──────────────────────────────────
     let success = business_success && delivery_success;
-    let elapsed_ms = start.elapsed().as_millis();
-    let elapsed_secs = start.elapsed().as_secs_f64();
 
     // Track metrics
     metrics::counter!(
         shared::metrics::GATEWAY_COMMANDS_TOTAL,
-        "command" => command_name.to_string(),
-        "kind"    => kind.to_string(),
+        "command" => get_interaction_name(&interaction),
+        "kind"    => get_interaction_kind(&interaction),
         "success" => success.to_string()
     )
     .increment(1);
 
     metrics::histogram!(
         shared::metrics::GATEWAY_COMMAND_LATENCY,
-        "command" => command_name.to_string(),
-        "kind"    => kind.to_string()
+        "command" => get_interaction_name(&interaction),
+        "kind"    => get_interaction_kind(&interaction)
     )
-    .record(elapsed_secs);
+    .record(start.elapsed().as_secs_f64());
 
     tracing::info!(
-        command    = command_name,
-        kind       = kind,
-        success    = success,
-        guild_id   = ?guild_id_str,
-        user_id    = user_id,
-        latency_ms = elapsed_ms,
+        command = get_interaction_name(&interaction),
+        kind = get_interaction_kind(&interaction),
+        success = success,
+        guild_id = ?guild_id_str,
+        user_id = user_id,
+        latency_ms = latency_ms,
         "interaction handled"
     );
 
@@ -281,36 +294,82 @@ async fn handle_interaction(
         .log_command(
             &user_id.to_string(),
             guild_id_str.as_deref(),
-            command_name,
-            kind,
-            success,
-            elapsed_ms as i64,
+            &get_interaction_name(&interaction),
+            get_interaction_kind(&interaction),
+            business_success,
+            latency_ms,
         )
         .await;
 
     Ok(())
 }
 
-// ── Remind Me handler ─────────────────────────────────────────────────────────
-
 async fn handle_remind_component(
-    event_repo: &dyn ReadCtfRepository,
-    reminder_repo: &dyn ReminderRepository,
+    events: &dyn ReadCtfRepository,
+    reminders: &dyn ReminderRepository,
     user_id: &str,
     ctftime_id_str: &str,
 ) -> CtfResult<InteractionResponse> {
-    let ctftime_id: i64 = match ctftime_id_str.parse() {
-        Ok(v) => v,
-        Err(_) => return Ok(ephemeral_error("Invalid event ID in button.")),
-    };
+    let ctftime_id = ctftime_id_str
+        .parse::<i64>()
+        .map_err(|_| CtfError::InvalidInput("Invalid CTFtime ID".into()))?;
 
-    commands::reminder::common::create_event_reminder(
-        chrono::Utc::now(),
-        event_repo,
-        reminder_repo,
-        user_id,
-        ctftime_id,
-        3600, // 1 hour offset for button
-    )
-    .await
+    let event = events
+        .get_by_ctftime_id(ctftime_id)
+        .await?
+        .ok_or_else(|| CtfError::NotFound("Event not found".into()))?;
+
+    // Create a one-shot reminder at the start time.
+    let outcome = reminders
+        .create(&shared::Reminder {
+            user_id: user_id.to_string(),
+            kind: shared::ReminderKind::Event,
+            ctftime_id: Some(ctftime_id),
+            event_title: Some(event.title.clone()),
+            event_start_at: Some(event.start_time),
+            remind_at: event.start_time,
+            ..Default::default()
+        })
+        .await?;
+
+    match outcome {
+        shared::CreateReminderOutcome::Created => {
+            let embed = CtfEmbed::success("Reminder set")
+                .description(format!(
+                    "I'll remind you when **{}** starts (<t:{}:R>).",
+                    event.title,
+                    event.start_time.timestamp()
+                ))
+                .now()
+                .build();
+            Ok(ephemeral_embed(embed))
+        }
+        shared::CreateReminderOutcome::AlreadyExists => Ok(ephemeral_error(
+            "You already have a reminder for this event.",
+        )),
+        shared::CreateReminderOutcome::QuotaExceeded => Ok(ephemeral_error(
+            "You have too many active reminders. Please delete some before adding more.",
+        )),
+    }
+}
+
+fn get_interaction_name(interaction: &Interaction) -> String {
+    match interaction.data {
+        Some(InteractionData::ApplicationCommand(ref data)) => data.name.clone(),
+        Some(InteractionData::MessageComponent(ref data)) => data
+            .custom_id
+            .split(':')
+            .next()
+            .unwrap_or("component")
+            .to_string(),
+        _ => "unknown".to_string(),
+    }
+}
+
+fn get_interaction_kind(interaction: &Interaction) -> &'static str {
+    match interaction.data {
+        Some(InteractionData::ApplicationCommand(_)) => "slash",
+        Some(InteractionData::MessageComponent(_)) => "component",
+        _ => "unknown",
+    }
 }

@@ -2,7 +2,7 @@ use super::SchedulerTask;
 use crate::SharedState;
 use async_trait::async_trait;
 use chrono::{Datelike, Utc};
-use shared::{CtfError, CtfResult};
+use shared::CtfResult;
 use shared::{ReadCtfRepository, UpcomingFilter};
 use tracing::{error, info};
 
