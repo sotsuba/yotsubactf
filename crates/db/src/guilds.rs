@@ -270,4 +270,13 @@ impl GuildRepository for PostgresGuildRepository {
     async fn check_health(&self) -> bool {
         sqlx::query("SELECT 1").fetch_one(&self.pool).await.is_ok()
     }
+
+    async fn count_subscribed_guilds(&self) -> Result<i64> {
+        let row =
+            sqlx::query!("SELECT COUNT(*) as count FROM subscriptions WHERE deleted_at IS NULL")
+                .fetch_one(&self.pool)
+                .await
+                .map_err(crate::db_err)?;
+        Ok(row.count.unwrap_or(0))
+    }
 }
