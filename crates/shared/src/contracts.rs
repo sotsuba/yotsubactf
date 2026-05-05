@@ -203,6 +203,9 @@ pub trait GuildRepository: Send + Sync {
 
     /// Check if the repository is healthy (e.g. database connection is alive).
     async fn check_health(&self) -> bool;
+
+    /// Return the total number of guilds with an active subscription.
+    async fn count_subscribed_guilds(&self) -> crate::error::CtfResult<i64>;
 }
 
 // ── Reminder repository ───────────────────────────────────────────────────────

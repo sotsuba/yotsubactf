@@ -270,6 +270,10 @@ impl GuildRepository for InMemoryGuildRepository {
     async fn check_health(&self) -> bool {
         true
     }
+
+    async fn count_subscribed_guilds(&self) -> Result<i64> {
+        Ok(0)
+    }
 }
 
 /// A thread-safe in-memory reminder repository for unit testing.
