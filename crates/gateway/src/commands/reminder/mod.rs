@@ -8,7 +8,7 @@ use twilight_model::application::interaction::Interaction;
 use twilight_model::application::interaction::application_command::CommandOptionValue;
 use twilight_model::http::interaction::{InteractionResponse, InteractionResponseType};
 use twilight_util::builder::command::{
-    CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder, SubCommandGroupBuilder,
+    CommandBuilder, IntegerBuilder, SubCommandBuilder, SubCommandGroupBuilder,
 };
 
 mod cancel;
@@ -30,32 +30,20 @@ impl SlashCommand for ReminderCommand {
         "reminder"
     }
     fn definition(&self) -> twilight_model::application::command::Command {
+        use super::event::validation;
         CommandBuilder::new("reminder", "Manage your reminders", CommandType::ChatInput)
             .option(
                 SubCommandGroupBuilder::new("set", "Create a reminder").subcommands(vec![
                     SubCommandBuilder::new("event", "Remind me before a CTF event")
                         .option(IntegerBuilder::new("event_id", "CTFTime event ID").required(true))
-                        .option(
-                            IntegerBuilder::new("days", "Days before start")
-                                .min_value(0)
-                                .max_value(365),
-                        )
-                        .option(IntegerBuilder::new("hours", "Hours before start").min_value(0))
-                        .option(
-                            IntegerBuilder::new("minutes", "Minutes before start").min_value(0),
-                        ),
-                    SubCommandBuilder::new("timer", "Set a simple one-shot timer")
-                        .option(
-                            StringBuilder::new("message", "Message to remind you with")
-                                .required(true),
-                        )
-                        .option(
-                            IntegerBuilder::new("days", "Days from now")
-                                .min_value(0)
-                                .max_value(365),
-                        )
-                        .option(IntegerBuilder::new("hours", "Hours from now").min_value(0))
-                        .option(IntegerBuilder::new("minutes", "Minutes from now").min_value(0)),
+                        .option(validation::days_option("Days before start", 365))
+                        .option(validation::hours_option("Hours before start"))
+                        .option(validation::minutes_option("Minutes before start")),
+                    SubCommandBuilder::new("timer", "Set a countdown timer")
+                        .option(validation::days_option("Days until reminder", 90))
+                        .option(validation::hours_option("Hours until reminder"))
+                        .option(validation::minutes_option("Minutes until reminder"))
+                        .option(validation::message_option()),
                     SubCommandBuilder::new("recurring", "Set a recurring reminder")
                         .option(
                             IntegerBuilder::new("for_hours", "Remind for how many hours from now")
@@ -69,7 +57,7 @@ impl SlashCommand for ReminderCommand {
                             "delay_minutes",
                             "Wait X minutes before first fire (default: fires immediately)",
                         ))
-                        .option(StringBuilder::new("message", "Message to remind you with")),
+                        .option(validation::message_option()),
                 ]),
             )
             .option(SubCommandBuilder::new("list", "List your active reminders"))

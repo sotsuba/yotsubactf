@@ -3,6 +3,7 @@ pub mod countdown;
 pub mod current;
 pub mod info;
 pub mod upcoming;
+pub mod validation;
 
 use super::{CommandContext, SlashCommand};
 use crate::embed::ephemeral_error;
