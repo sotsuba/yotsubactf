@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # .githooks/pre-push
 
-changed=$(git diff --cached --name-only)
+changed=$(git diff origin/main...HEAD --name-only)
 if echo "$changed" | grep -qvE '\.(md|txt|json|yml|yaml|toml)$'; then
     : 
 else
