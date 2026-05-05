@@ -9,7 +9,7 @@ use crate::models::{
     TrackedTeam, UpsertStatus, Writeup, WriteupSearchResult,
 };
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::RwLock;
@@ -280,11 +280,11 @@ pub struct InMemoryReminderRepository {
 
 #[async_trait]
 impl ReminderRepository for InMemoryReminderRepository {
-    async fn create(&self, reminder: &Reminder) -> Result<Reminder> {
+    async fn create(&self, reminder: &Reminder) -> Result<crate::models::CreateReminderOutcome> {
         let mut r = reminder.clone();
         r.id = Uuid::new_v4();
         self.reminders.write().await.push(r.clone());
-        Ok(r)
+        Ok(crate::models::CreateReminderOutcome::Created)
     }
 
     async fn fetch_due(&self, now: DateTime<Utc>) -> Result<Vec<Reminder>> {
@@ -304,12 +304,13 @@ impl ReminderRepository for InMemoryReminderRepository {
         cursor: Option<DateTime<Utc>>,
     ) -> Result<Vec<Reminder>> {
         let reminders = self.reminders.read().await;
+        let now = Utc::now();
         let mut results: Vec<Reminder> = reminders
             .iter()
             .filter(|r| r.user_id == user_id)
             .filter(|r| match r.kind {
-                ReminderKind::Event | ReminderKind::Timer => r.sent_count == 0,
                 ReminderKind::Recurring => r.repeat_until.is_none_or(|until| r.remind_at <= until),
+                _ => r.last_sent_at.is_none() && r.remind_at >= now - Duration::hours(1),
             })
             .filter(|r| cursor.is_none_or(|c| r.remind_at > c))
             .cloned()
@@ -345,6 +346,7 @@ impl ReminderRepository for InMemoryReminderRepository {
             let new_count = reminder.sent_count + 1;
             reminders[pos].remind_at = next;
             reminders[pos].sent_count = new_count;
+            reminders[pos].last_sent_at = Some(Utc::now());
             Ok(ReminderAdvanceResult::Advanced {
                 next_remind_at: next,
                 sent_count: new_count,

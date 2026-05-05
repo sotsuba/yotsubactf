@@ -1,49 +1,27 @@
-use async_trait::async_trait;
-use shared::CtfResult;
-use shared::{CtfEvent, ReadCtfRepository};
+//! `/event current` subcommand + all its button interactions.
 
-use twilight_model::application::command::CommandType;
-use twilight_model::application::interaction::application_command::{
-    CommandDataOption, CommandOptionValue,
-};
-use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
-use twilight_model::channel::message::component::{ActionRow, Button, ButtonStyle, Component};
-use twilight_model::http::interaction::InteractionResponse;
-use twilight_util::builder::command::CommandBuilder;
-
-use super::{CommandContext, SlashCommand};
 use crate::embed::{
     CtfEmbed, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationNav, ephemeral_error, paged_response,
 };
+use crate::state::AppState;
 use crate::util::truncate;
+use shared::{CtfEvent, CtfResult, ReadCtfRepository};
+use twilight_model::application::interaction::application_command::{
+    CommandDataOption, CommandOptionValue,
+};
+use twilight_model::channel::message::component::{ActionRow, Button, ButtonStyle, Component};
+use twilight_model::http::interaction::InteractionResponse;
 
-pub struct CurrentCommand;
-
-#[async_trait]
-impl SlashCommand for CurrentCommand {
-    fn name(&self) -> &'static str {
-        "current"
-    }
-    fn definition(&self) -> twilight_model::application::command::Command {
-        CommandBuilder::new(
-            "current",
-            "Show CTF events that are in progress right now",
-            CommandType::ChatInput,
-        )
-        .build()
-    }
-    async fn handle(&self, ctx: CommandContext<'_>) -> CtfResult<InteractionResponse> {
-        handle(ctx.state.events.as_ref(), ctx.options).await
-    }
-}
+// ── Subcommand handler ────────────────────────────────────────────────────────
 
 pub async fn handle(
-    repo: &dyn ReadCtfRepository,
+    state: &AppState,
     options: &[CommandDataOption],
 ) -> CtfResult<InteractionResponse> {
+    let repo = state.events.as_ref();
     let limit = parse_limit(options);
     let paginated = fetch_page(repo, 1, limit).await?;
-    let has_next = limit < paginated.total_count;
+    let has_next = paginated.events.len() as i64 >= limit && (limit < paginated.total_count);
     Ok(build_response(
         &paginated.events,
         1,
@@ -55,13 +33,17 @@ pub async fn handle(
     ))
 }
 
+// ── Button component dispatcher ───────────────────────────────────────────────
+
 pub async fn handle_component(
     repo: &dyn ReadCtfRepository,
-    data: &MessageComponentInteractionData,
+    rest: &str,
 ) -> CtfResult<InteractionResponse> {
-    let parts: Vec<&str> = data.custom_id.splitn(3, ':').collect();
+    // Route by the segments of the custom_id rest.
+    // Schema: page:<p>:<limit>
+    let parts: Vec<&str> = rest.splitn(2, ':').collect();
     match parts.as_slice() {
-        ["current", "page", rest] => {
+        ["page", rest] => {
             let mut parts = rest.splitn(2, ':');
             let page: i64 = parts
                 .next()
@@ -74,7 +56,8 @@ pub async fn handle_component(
                 .map(|v| v.clamp(1, MAX_PAGE_SIZE))
                 .unwrap_or(DEFAULT_PAGE_SIZE);
             let paginated = fetch_page(repo, page, limit).await?;
-            let has_next = page * limit < paginated.total_count;
+            let has_next =
+                paginated.events.len() as i64 >= limit && (page * limit < paginated.total_count);
             Ok(build_response(
                 &paginated.events,
                 page,
@@ -88,6 +71,8 @@ pub async fn handle_component(
         _ => Ok(ephemeral_error("Unsupported interaction.")),
     }
 }
+
+// ── Pagination handler ────────────────────────────────────────────────────────
 
 async fn fetch_page(
     repo: &dyn ReadCtfRepository,
@@ -111,7 +96,7 @@ fn build_response(
         let embed = CtfEmbed::new("No CTFs currently running")
             .description(
                 "There are no CTF events in progress right now.\n\
-                 Use `/upcoming` to see what's coming up next.",
+                 Use `/event upcoming` to see what's coming up next.",
             )
             .now()
             .build();
@@ -158,8 +143,8 @@ fn build_response(
     }
 
     let nav = PaginationNav {
-        prev_id: format!("current:page:{}:{}", page - 1, limit),
-        next_id: format!("current:page:{}:{}", page + 1, limit),
+        prev_id: format!("event:current:page:{}:{}", page - 1, limit),
+        next_id: format!("event:current:page:{}:{}", page + 1, limit),
         has_prev,
         has_next,
     };

@@ -73,7 +73,7 @@ mod tests {
         updated_event.title = "Updated Title".to_string();
 
         let stats = pipeline::process_events(
-            &[updated_event],
+            std::slice::from_ref(&updated_event),
             event_repo.as_ref(),
             guild_repo.as_ref(),
             notifier.as_ref(),

@@ -3,7 +3,7 @@ use chrono::{DateTime, Duration, Utc};
 pub const MAX_FIRE_COUNT: i32 = 60;
 #[allow(dead_code)]
 pub const MAX_ACTIVE_RECURRING: i64 = 10;
-pub const MAX_REMINDER_DAYS: i64 = 365;
+pub const MAX_REMINDER_DAYS: i64 = 90;
 pub const MAX_PENDING_REMINDERS: usize = 10;
 
 #[derive(Debug, thiserror::Error)]
@@ -18,9 +18,11 @@ pub enum ReminderValidationError {
     TooManyFires(i64),
     #[error("Delay must be less than the total duration.")]
     DelayExceedsDuration,
+    #[error("Delay must be non-negative.")]
+    DelayNegative,
     #[error("Message must be 200 characters or less.")]
     MessageTooLong,
-    #[error("Reminder time is too far in the future (max 365 days).")]
+    #[error("Reminder time is too far in the future (max 90 days).")]
     #[allow(dead_code)]
     TimeTooFar,
 }
@@ -56,6 +58,9 @@ pub fn validate_recurring(
     }
     if !(1..=720).contains(&params.for_hours) {
         return Err(ReminderValidationError::DurationOutOfRange);
+    }
+    if params.delay_minutes < 0 {
+        return Err(ReminderValidationError::DelayNegative);
     }
     if delay_secs >= duration_secs {
         return Err(ReminderValidationError::DelayExceedsDuration);

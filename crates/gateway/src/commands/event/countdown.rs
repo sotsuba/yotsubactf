@@ -1,48 +1,21 @@
-use async_trait::async_trait;
 use chrono::Utc;
 use shared::CtfResult;
 use shared::ReadCtfRepository;
-use twilight_model::application::command::CommandType;
 use twilight_model::application::interaction::application_command::{
     CommandDataOption, CommandOptionValue,
 };
 use twilight_model::http::interaction::InteractionResponse;
-use twilight_util::builder::command::{CommandBuilder, StringBuilder};
 
-use super::{CommandContext, SlashCommand};
 use crate::embed::{CtfEmbed, ephemeral_embed, ephemeral_error};
 
-pub struct CountdownCommand;
-
-#[async_trait]
-impl SlashCommand for CountdownCommand {
-    fn name(&self) -> &'static str {
-        "countdown"
-    }
-    fn definition(&self) -> twilight_model::application::command::Command {
-        CommandBuilder::new(
-            "countdown",
-            "Countdown to when a CTF starts or ends",
-            CommandType::ChatInput,
-        )
-        .option(
-            StringBuilder::new("name", "CTF name (or partial name, case-insensitive)")
-                .required(true)
-                .build(),
-        )
-        .build()
-    }
-    async fn handle(&self, ctx: CommandContext<'_>) -> CtfResult<InteractionResponse> {
-        handle(ctx.state.events.as_ref(), ctx.options).await
-    }
-}
+// ── Subcommand handler ────────────────────────────────────────────────────────
 
 pub async fn handle(
     repo: &dyn ReadCtfRepository,
     options: &[CommandDataOption],
 ) -> CtfResult<InteractionResponse> {
-    // Step 1: parse the required "name" option.
-    let query = match parse_name(options) {
+    // Step 1: parse the required "query" option.
+    let query = match parse_query(options) {
         Some(q) => q,
         None => return Ok(ephemeral_error("Please provide a CTF name.")),
     };
@@ -54,7 +27,7 @@ pub async fn handle(
             let embed = CtfEmbed::warning("Not found")
                 .description(format!(
                     "No CTF matching **\"{}\"** was found among upcoming or ongoing events.\n\
-                     Try `/upcoming` to browse the full list.",
+                     Try `/event upcoming` to browse the full list.",
                     query
                 ))
                 .now()
@@ -120,8 +93,8 @@ pub async fn handle(
     Ok(ephemeral_embed(embed))
 }
 
-fn parse_name(options: &[CommandDataOption]) -> Option<String> {
-    options.iter().find(|o| o.name == "name").and_then(|o| {
+fn parse_query(options: &[CommandDataOption]) -> Option<String> {
+    options.iter().find(|o| o.name == "query").and_then(|o| {
         if let CommandOptionValue::String(s) = &o.value {
             Some(s.clone())
         } else {

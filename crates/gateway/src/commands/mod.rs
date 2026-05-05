@@ -1,7 +1,6 @@
 pub mod cipher;
-pub mod countdown;
-pub mod current;
 pub mod digest;
+pub mod event;
 pub mod hash;
 pub mod help;
 pub mod leaderboard;
@@ -10,7 +9,6 @@ pub mod reminder;
 pub mod subscribe;
 pub mod team;
 pub mod unsubscribe;
-pub mod upcoming;
 pub mod writeups;
 
 use crate::state::AppState;
@@ -63,9 +61,7 @@ impl CommandRegistry {
         let list: Vec<Arc<dyn SlashCommand>> = vec![
             Arc::new(ping::PingCommand),
             Arc::new(help::HelpCommand),
-            Arc::new(upcoming::UpcomingCommand),
-            Arc::new(current::CurrentCommand),
-            Arc::new(countdown::CountdownCommand),
+            Arc::new(event::EventCommand),
             Arc::new(cipher::CipherCommand),
             Arc::new(hash::HashCommand),
             Arc::new(leaderboard::LeaderboardCommand),

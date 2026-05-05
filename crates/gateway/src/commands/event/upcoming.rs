@@ -1,107 +1,39 @@
-//! `/upcoming` command + all its button interactions.
+//! `/event upcoming` subcommand + all its button interactions.
 //!
 //! ## Component custom_id schema
 //!
-//! | Pattern                     | Meaning                                          |
-//! |-----------------------------|--------------------------------------------------|
-//! | `upcoming:page:<p>:<limit>` | Navigate to page `p` with `limit` events/page.  |
-//! | `upcoming:join:<ctftime_id>`| Show ephemeral join-links for that CTF event.    |
+//! | Pattern                           | Meaning                                          |
+//! |-----------------------------------|--------------------------------------------------|
+//! | `event:upcoming:page:<p>:<limit>` | Navigate to page `p` with `limit` events/page.  |
+//! | `event:upcoming:join:<ctftime_id>`| Show ephemeral join-links for that CTF event.    |
 
-use async_trait::async_trait;
-use shared::CtfEvent;
-use shared::CtfResult;
-use shared::ReadCtfRepository;
-use shared::UpcomingFilter;
-
-use twilight_model::application::command::CommandType;
-use twilight_model::application::interaction::application_command::{
-    CommandDataOption, CommandOptionValue,
-};
-use twilight_model::application::interaction::message_component::MessageComponentInteractionData;
-use twilight_model::http::interaction::InteractionResponse;
-
-use super::{CommandContext, SlashCommand};
 use crate::embed::{
     CtfEmbed, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationNav, ephemeral_error,
     join_community_response, paged_response,
 };
+use crate::state::AppState;
 use crate::util::truncate;
+use shared::CtfEvent;
+use shared::CtfResult;
+use shared::ReadCtfRepository;
+use shared::UpcomingFilter;
+use twilight_model::application::interaction::application_command::{
+    CommandDataOption, CommandOptionValue,
+};
 use twilight_model::channel::message::component::{ActionRow, Button, ButtonStyle, Component};
-use twilight_util::builder::command::{CommandBuilder, IntegerBuilder, StringBuilder};
+use twilight_model::http::interaction::InteractionResponse;
 
-pub struct UpcomingCommand;
-
-#[async_trait]
-impl SlashCommand for UpcomingCommand {
-    fn name(&self) -> &'static str {
-        "upcoming"
-    }
-    fn definition(&self) -> twilight_model::application::command::Command {
-        CommandBuilder::new(
-            "upcoming",
-            "Show upcoming CTF events",
-            CommandType::ChatInput,
-        )
-        .option(
-            IntegerBuilder::new("count", "Number of events to show (max 25)")
-                .min_value(1)
-                .max_value(MAX_PAGE_SIZE)
-                .build(),
-        )
-        .option(
-            StringBuilder::new("format", "Filter by format (e.g. Jeopardy, Attack-Defense)")
-                .choices([
-                    ("Jeopardy", "Jeopardy"),
-                    ("Attack-Defense", "Attack-Defense"),
-                    ("Mixed", "Mixed"),
-                ])
-                .build(),
-        )
-        .option(
-            twilight_util::builder::command::NumberBuilder::new(
-                "weight_min",
-                "Minimum weight (e.g. 10)",
-            )
-            .min_value(0.0)
-            .build(),
-        )
-        .option(
-            twilight_util::builder::command::NumberBuilder::new("weight_max", "Maximum weight")
-                .min_value(0.0)
-                .build(),
-        )
-        .option(
-            twilight_util::builder::command::BooleanBuilder::new(
-                "onsite",
-                "true = onsite only, false = online only",
-            )
-            .build(),
-        )
-        .option(
-            StringBuilder::new("sort_by", "Sort order")
-                .choices([
-                    ("Time (Nearest)", "time"),
-                    ("Reputation (Weight)", "weight"),
-                ])
-                .build(),
-        )
-        .build()
-    }
-    async fn handle(&self, ctx: CommandContext<'_>) -> CtfResult<InteractionResponse> {
-        handle(ctx.state.events.as_ref(), ctx.options).await
-    }
-}
-
-// ── Slash command ─────────────────────────────────────────────────────────────
+// ── Subcommand handler ────────────────────────────────────────────────────────
 
 pub async fn handle(
-    repo: &dyn ReadCtfRepository,
+    state: &AppState,
     options: &[CommandDataOption],
 ) -> CtfResult<InteractionResponse> {
+    let repo = state.events.as_ref();
     let limit = parse_limit(options);
     let filter = parse_filter(options);
     let paginated = fetch_page(repo, 1, limit, &filter).await?;
-    let has_next = limit < paginated.total_count;
+    let has_next = paginated.events.len() as i64 >= limit && (limit < paginated.total_count);
     Ok(build_paged_response(
         &paginated.events,
         1,
@@ -118,15 +50,14 @@ pub async fn handle(
 
 pub async fn handle_component(
     repo: &dyn ReadCtfRepository,
-    data: &MessageComponentInteractionData,
+    rest: &str,
 ) -> CtfResult<InteractionResponse> {
-    // Route by the first segment of the custom_id.
-    let parts: Vec<&str> = data.custom_id.splitn(3, ':').collect();
+    // Route by the segments of the custom_id rest.
+    // Schema: page:<rest>
+    let parts: Vec<&str> = rest.splitn(2, ':').collect();
     match parts.as_slice() {
-        // upcoming:page:<p>:<limit>
-        ["upcoming", "page", rest] => handle_page_component(repo, rest).await,
-        // upcoming:join:<ctftime_id>
-        ["upcoming", "join", ctftime_id_str] => handle_join_component(repo, ctftime_id_str).await,
+        ["page", rest] => handle_page_component(repo, rest).await,
+        ["join", ctftime_id_str] => handle_join_component(repo, ctftime_id_str).await,
         _ => Ok(ephemeral_error("Unsupported interaction.")),
     }
 }
@@ -142,7 +73,7 @@ async fn handle_page_component(
         None => return Ok(ephemeral_error("Unsupported interaction.")),
     };
     let paginated = fetch_page(repo, page, limit, &filter).await?;
-    let has_next = page * limit < paginated.total_count;
+    let has_next = paginated.events.len() as i64 >= limit && (page * limit < paginated.total_count);
     Ok(build_paged_response(
         &paginated.events,
         page,
@@ -223,7 +154,7 @@ fn build_paged_response(
                 let global_n = (page - 1) * limit + i as i64 + 1;
                 let title_trunc = truncate(&e.title, 12);
                 Component::Button(Button {
-                    custom_id: Some(format!("upcoming:join:{}", e.ctftime_id)),
+                    custom_id: Some(format!("event:upcoming:join:{}", e.ctftime_id)),
                     disabled: e.social_links.is_empty(),
                     emoji: None,
                     label: Some(format!("#{} {}", global_n, title_trunc)),
@@ -251,13 +182,13 @@ fn build_paged_response(
 
     let nav = PaginationNav {
         prev_id: format!(
-            "upcoming:page:{}:{}:{}",
+            "event:upcoming:page:{}:{}:{}",
             page - 1,
             limit,
             filter_to_qs(filter, 80)
         ),
         next_id: format!(
-            "upcoming:page:{}:{}:{}",
+            "event:upcoming:page:{}:{}:{}",
             page + 1,
             limit,
             filter_to_qs(filter, 80)

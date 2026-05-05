@@ -147,8 +147,8 @@ pub async fn process_events(
 /// Enrich a single event in-place.
 ///
 /// Performs at most two outbound fetches:
-///   1. `ctftime.org/event/{id}` — patch data + on-page social links (always)
-///   2. The CTF's own website   — additional social links (when URL is present)
+/// 1. `ctftime.org/event/{id}` — patch data + on-page social links (always)
+/// 2. The CTF's own website   — additional social links (when URL is present)
 ///
 /// Previously the code fetched the CTFTime page *twice* per event (once in
 /// `fetch_event_patch`, once inside `fetch_social_links`). This function

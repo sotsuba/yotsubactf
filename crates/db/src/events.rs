@@ -8,8 +8,8 @@ use sqlx::{PgPool, QueryBuilder};
 use uuid::Uuid;
 
 use shared::{
-    CtfEvent, PaginatedEvents, ReadCtfRepository, SocialLink, UpcomingFilter, UpsertStatus,
-    WriteCtfRepository,
+    CompletedFilter, CtfEvent, PaginatedEvents, ReadCtfRepository, SocialLink, UpcomingFilter,
+    UpsertStatus, WriteCtfRepository,
 };
 
 #[derive(Debug, sqlx::FromRow)]
@@ -245,6 +245,49 @@ impl ReadCtfRepository for PostgresCtfRepository {
         .map_err(crate::db_err)?;
 
         Ok(rows.into_iter().map(CtfEvent::from).collect())
+    }
+
+    async fn list_completed(
+        &self,
+        limit: i64,
+        offset: i64,
+        filter: &CompletedFilter,
+    ) -> Result<PaginatedEvents> {
+        let mut qb = QueryBuilder::new(
+            "SELECT id, ctftime_id, title, url, start_time, end_time, \
+             weight, format, organiser, description, \
+             social_links, created_at, updated_at, is_onsite, \
+             COUNT(*) OVER() as total_count \
+             FROM ctf_events WHERE end_time < ",
+        );
+        qb.push_bind(Utc::now());
+
+        if let Some(ref fmt) = filter.format {
+            qb.push(" AND format ILIKE ");
+            qb.push_bind(fmt);
+        }
+        if let Some(min_w) = filter.min_weight {
+            qb.push(" AND weight >= ");
+            qb.push_bind(min_w);
+        }
+
+        qb.push(" ORDER BY end_time DESC LIMIT ");
+        qb.push_bind(limit);
+        qb.push(" OFFSET ");
+        qb.push_bind(offset);
+
+        let rows = qb
+            .build_query_as::<DbCtfEvent>()
+            .fetch_all(&self.pool)
+            .await
+            .map_err(crate::db_err)?;
+
+        let total_count = rows.first().and_then(|r| r.total_count).unwrap_or(0);
+        let events = rows.into_iter().map(CtfEvent::from).collect();
+        Ok(PaginatedEvents {
+            events,
+            total_count,
+        })
     }
 
     async fn get_all_by_title_fuzzy(&self, query: &str) -> Result<Option<CtfEvent>> {

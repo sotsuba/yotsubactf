@@ -109,7 +109,7 @@ services:
     restart: unless-stopped
     volumes:
       # Mount configuration as read-only (:ro) for security
-      - ./monitoring/infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "127.0.0.1:9090:9090"
     networks:

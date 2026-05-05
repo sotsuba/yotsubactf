@@ -219,8 +219,11 @@ pub enum ReminderAdvanceResult {
 
 #[async_trait]
 pub trait ReminderRepository: Send + Sync {
-    /// Insert a new reminder. Returns the full row with generated UUID.
-    async fn create(&self, reminder: &Reminder) -> crate::error::CtfResult<Reminder>;
+    /// Insert a new reminder. Returns the outcome (Created, AlreadyExists, QuotaExceeded).
+    async fn create(
+        &self,
+        reminder: &Reminder,
+    ) -> crate::error::CtfResult<crate::models::CreateReminderOutcome>;
 
     /// All reminders due at or before `now`.
     async fn fetch_due(&self, now: DateTime<Utc>) -> crate::error::CtfResult<Vec<Reminder>>;
