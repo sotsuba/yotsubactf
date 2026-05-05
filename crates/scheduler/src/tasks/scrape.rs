@@ -25,5 +25,11 @@ pub async fn run_once(state: &SharedState) -> CtfResult<()> {
     )
     .await?;
     info!(?stats, "Scrape complete");
+
+    // Track active guilds — essential metric for bot growth visibility
+    if let Ok(count) = state.guild_repo.count_subscribed_guilds().await {
+        metrics::gauge!("bot_guilds_total").set(count as f64);
+    }
+
     Ok(())
 }
