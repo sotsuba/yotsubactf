@@ -146,8 +146,8 @@ fn build_response(
     }
 
     let nav = PaginationNav {
-        prev_id: format!("event:current:page:{}:{}", page - 1, limit),
-        next_id: format!("event:current:page:{}:{}", page + 1, limit),
+        prev_id: format!("event_current:page:{}:{}", page - 1, limit),
+        next_id: format!("event_current:page:{}:{}", page + 1, limit),
         has_prev,
         has_next,
     };

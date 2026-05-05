@@ -4,8 +4,8 @@
 //!
 //! | Pattern                           | Meaning                                          |
 //! |-----------------------------------|--------------------------------------------------|
-//! | `event:upcoming:page:<p>:<limit>` | Navigate to page `p` with `limit` events/page.  |
-//! | `event:upcoming:join:<ctftime_id>`| Show ephemeral join-links for that CTF event.    |
+//! | `event_upcoming:page:<p>:<limit>` | Navigate to page `p` with `limit` events/page.  |
+//! | `event_upcoming:join:<ctftime_id>`| Show ephemeral join-links for that CTF event.    |
 
 use crate::embed::{
     CtfEmbed, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationNav, ephemeral_error,
@@ -154,7 +154,7 @@ fn build_paged_response(
                 let global_n = (page - 1) * limit + i as i64 + 1;
                 let title_trunc = truncate(&e.title, 12);
                 Component::Button(Button {
-                    custom_id: Some(format!("event:upcoming:join:{}", e.ctftime_id)),
+                    custom_id: Some(format!("event_upcoming:join:{}", e.ctftime_id)),
                     disabled: e.social_links.is_empty(),
                     emoji: None,
                     id: None,
@@ -185,13 +185,13 @@ fn build_paged_response(
 
     let nav = PaginationNav {
         prev_id: format!(
-            "event:upcoming:page:{}:{}:{}",
+            "event_upcoming:page:{}:{}:{}",
             page - 1,
             limit,
             filter_to_qs(filter, 80)
         ),
         next_id: format!(
-            "event:upcoming:page:{}:{}:{}",
+            "event_upcoming:page:{}:{}:{}",
             page + 1,
             limit,
             filter_to_qs(filter, 80)
