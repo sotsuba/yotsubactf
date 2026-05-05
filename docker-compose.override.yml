@@ -1,0 +1,112 @@
+# docker-compose.override.yml
+# This file is automatically loaded by 'docker compose up' in development.
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+
+  scheduler:
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "8086:8085"
+    volumes:
+      - .:/app # Optional: for hot-reloading if your Dockerfile supports it
+
+  gateway:
+    environment:
+      RUST_LOG: debug
+    ports:
+      - "8085:8085"
+
+  # Monitoring (Dev-only specific settings)
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command:
+      - '--config.file=/etc/prometheus/prometheus.dev.yml'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+      - backend
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+    volumes:
+      - grafdata_dev:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    ports:
+      - "3030:3000"
+    networks:
+      - monitoring
+
+  alertmanager:
+    build:
+      context: .
+      dockerfile: ./monitoring/alertmanager/Dockerfile
+    environment:
+      - ENV=dev
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:3.3.2
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - ./monitoring/loki/rules:/loki/rules:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - backend
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    environment:
+      - REDIS_ADDR=redis:6379
+    networks:
+      - backend
+
+volumes:
+  grafdata_dev:

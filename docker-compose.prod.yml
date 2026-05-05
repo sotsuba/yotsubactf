@@ -1,36 +1,35 @@
 # docker-compose.prod.yml
-# Run locally: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
-
 services:
-  postgres-prod:
-    image: postgres:16-alpine
-    restart: unless-stopped
+  postgres:
     environment:
-      POSTGRES_USER: ctfbot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ctfbot_prod
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ctfbot"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - backend
+    restart: unless-stopped
 
+  redis:
+    volumes:
+      - redisdata_prod:/data
+    restart: unless-stopped
+
+  scheduler:
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8086:8085"
+
+  gateway:
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8085"
 
   db-backup:
     build:
       context: .
       dockerfile: scripts/backup/Dockerfile
     restart: unless-stopped
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
     environment:
-      POSTGRES_HOST: postgres-prod
-      POSTGRES_DB: ctfbot_prod
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ctfbot
       POSTGRES_USER: ctfbot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET}
@@ -43,82 +42,6 @@ services:
     networks:
       - backend
 
-
-
-  redis-prod:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --save 60 1
-    volumes:
-      - redisdata_prod:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-    networks:
-      - backend
-
-
-  scheduler-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: scheduler
-    restart: unless-stopped
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
-      redis-prod:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-prod:5432/ctfbot_prod
-      REDIS_URL: redis://redis-prod:6379
-      DISCORD_TOKEN: ${DISCORD_TOKEN}
-      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
-      SCRAPE_INTERVAL_SECS: 3600
-      REMIND_INTERVAL_SECS: 60
-      RESULTS_INTERVAL_SECS: 21600
-      WRITEUPS_INTERVAL_SECS: 7200
-      DIGEST_INTERVAL_SECS: 3600
-      RUST_LOG: info
-      HEALTH_PORT: 8085
-    ports:
-      - "127.0.0.1:8086:8085"
-    networks:
-      backend:
-        aliases:
-          - scheduler
-
-
-  gateway-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: gateway
-    restart: unless-stopped
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
-      redis-prod:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-prod:5432/ctfbot_prod
-      REDIS_URL: redis://redis-prod:6379
-      DISCORD_TOKEN: ${DISCORD_TOKEN}
-      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
-      DISCORD_GUILD_ID: ""
-      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
-      RUST_LOG: info
-      HEALTH_PORT: 8085
-    ports:
-      - "127.0.0.1:8085:8085"
-    networks:
-      backend:
-        aliases:
-          - gateway
-
-  # ============================================================================
-  # Monitoring & Analytics
-  # ============================================================================
   prometheus:
     image: prom/prometheus:v3.1.0
     restart: unless-stopped
@@ -133,65 +56,32 @@ services:
       - monitoring
       - backend
 
-
-  node-exporter:
-    image: quay.io/prometheus/node-exporter:latest
-    restart: unless-stopped
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    networks:
-      - backend
-
-  redis-exporter:
-    image: oliver006/redis_exporter:latest
-    environment:
-      - REDIS_ADDR=redis-prod:6379
-    restart: unless-stopped
-    networks:
-      - backend
-
-
-
   alertmanager:
     build:
       context: .
       dockerfile: ./monitoring/alertmanager/Dockerfile
     restart: unless-stopped
-    volumes:
-      - ./monitoring/alertmanager:/etc/alertmanager:ro
-
     environment:
       - ENV=prod
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
-      - HEALTHCHECKS_PING_URL=${HEALTHCHECKS_PING_URL}
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager:ro
     ports:
       - "127.0.0.1:9093:9093"
     networks:
       - monitoring
 
-
   grafana:
     image: grafana/grafana:11.4.0
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:3030:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD}"
     volumes:
       - grafdata_prod:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
-    depends_on:
-      - prometheus
+    ports:
+      - "127.0.0.1:3030:3000"
     networks:
       - monitoring
 
@@ -202,7 +92,6 @@ services:
       - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
       - ./monitoring/loki/rules:/loki/rules:ro
       - lokidata_prod:/loki
-
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       - monitoring
@@ -218,6 +107,27 @@ services:
     networks:
       - monitoring
 
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - backend
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis:6379
+    networks:
+      - backend
 
   metabase:
     image: metabase/metabase:v0.51.1
@@ -226,21 +136,16 @@ services:
       - "127.0.0.1:3001:3000"
     volumes:
       - metabase_data_prod:/metabase-data
-    # Bypass default local H2 database in favor of Postgres for production-grade reliability
     environment:
       MB_DB_TYPE: postgres
-      MB_DB_DBNAME: ctfbot_prod
+      MB_DB_DBNAME: ctfbot
       MB_DB_PORT: 5432
       MB_DB_USER: ctfbot
       MB_DB_PASS: ${POSTGRES_PASSWORD}
-      MB_DB_HOST: postgres-prod
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
+      MB_DB_HOST: postgres
     networks:
       - backend
       - monitoring
-
 
 volumes:
   pgdata_prod:
@@ -248,9 +153,3 @@ volumes:
   grafdata_prod:
   metabase_data_prod:
   lokidata_prod:
-
-
-networks:
-  backend:
-  monitoring:
-
