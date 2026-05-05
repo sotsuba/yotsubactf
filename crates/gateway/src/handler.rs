@@ -47,9 +47,10 @@ use std::str::FromStr;
 enum ComponentAction {
     Remind(String),
     ReminderList(String),
-    Current,
     Writeups,
-    Upcoming,
+    EventUpcoming(String),
+    EventCurrent(String),
+    EventCompleted(String),
 }
 
 impl FromStr for ComponentAction {
@@ -60,9 +61,10 @@ impl FromStr for ComponentAction {
         match name {
             "remind" => Ok(Self::Remind(rest.to_string())),
             "reminder_list" => Ok(Self::ReminderList(rest.to_string())),
-            "current" => Ok(Self::Current),
             "writeups" => Ok(Self::Writeups),
-            "upcoming" => Ok(Self::Upcoming),
+            "event_upcoming" => Ok(Self::EventUpcoming(rest.to_string())),
+            "event_current" => Ok(Self::EventCurrent(rest.to_string())),
+            "event_completed" => Ok(Self::EventCompleted(rest.to_string())),
             _ => Err(()),
         }
     }
@@ -197,14 +199,8 @@ async fn handle_interaction(
                         )
                         .await
                     }
-                    ComponentAction::Current => {
-                        commands::current::handle_component(state.events.as_ref(), data).await
-                    }
                     ComponentAction::Writeups => {
                         commands::writeups::handle_component(state, data).await
-                    }
-                    ComponentAction::Upcoming => {
-                        commands::upcoming::handle_component(state.events.as_ref(), data).await
                     }
                     ComponentAction::EventUpcoming(rest) => {
                         commands::event::upcoming::handle_component(state.events.as_ref(), &rest)
@@ -233,13 +229,17 @@ async fn handle_interaction(
     let business_success = response_result.is_ok();
     let latency_ms = start.elapsed().as_millis() as i64;
 
-    let (command_name, kind) = match &interaction.data {
-        Some(InteractionData::ApplicationCommand(data)) => (data.name.as_str(), "slash"),
-        Some(InteractionData::MessageComponent(data)) => (
-            data.custom_id.split(':').next().unwrap_or("component"),
-            "component",
-        ),
-        _ => ("unknown", "unknown"),
+    let response = match response_result {
+        Ok(res) => res,
+        Err(e) => {
+            if !matches!(
+                e,
+                CtfError::NotFound(_) | CtfError::PermissionDenied(_) | CtfError::InvalidInput(_)
+            ) {
+                tracing::error!(?e, "Command execution failed");
+            }
+            ephemeral_embed(CtfEmbed::from_shared(e.to_embed()).now().build())
+        }
     };
 
     // ── Send Response to Discord ────────────────────────────────────────────
@@ -252,41 +252,39 @@ async fn handle_interaction(
     if let Err(err) = &discord_result {
         tracing::error!(
             ?err,
-            command  = command_name,
+            command = get_interaction_name(&interaction),
             guild_id = ?guild_id_str,
-            user_id  = user_id,
+            user_id = user_id,
             "failed to send interaction response to Discord"
         );
     }
 
     // ── Post-execution metrics and logging ──────────────────────────────────
     let success = business_success && delivery_success;
-    let elapsed_ms = start.elapsed().as_millis();
-    let elapsed_secs = start.elapsed().as_secs_f64();
 
     // Track metrics
     metrics::counter!(
         shared::metrics::GATEWAY_COMMANDS_TOTAL,
-        "command" => command_name.to_string(),
-        "kind"    => kind.to_string(),
+        "command" => get_interaction_name(&interaction),
+        "kind"    => get_interaction_kind(&interaction),
         "success" => success.to_string()
     )
     .increment(1);
 
     metrics::histogram!(
         shared::metrics::GATEWAY_COMMAND_LATENCY,
-        "command" => command_name.to_string(),
-        "kind"    => kind.to_string()
+        "command" => get_interaction_name(&interaction),
+        "kind"    => get_interaction_kind(&interaction)
     )
-    .record(elapsed_secs);
+    .record(start.elapsed().as_secs_f64());
 
     tracing::info!(
-        command    = command_name,
-        kind       = kind,
-        success    = success,
-        guild_id   = ?guild_id_str,
-        user_id    = user_id,
-        latency_ms = elapsed_ms,
+        command = get_interaction_name(&interaction),
+        kind = get_interaction_kind(&interaction),
+        success = success,
+        guild_id = ?guild_id_str,
+        user_id = user_id,
+        latency_ms = latency_ms,
         "interaction handled"
     );
 
@@ -303,23 +301,7 @@ async fn handle_interaction(
         )
         .await;
 
-    match response_result {
-        Ok(response) => {
-            let _ = http
-                .interaction(application_id)
-                .create_response(interaction.id, &interaction.token, &response)
-                .await;
-            Ok(())
-        }
-        Err(err) => {
-            let response = ephemeral_error(&err.to_string());
-            let _ = http
-                .interaction(application_id)
-                .create_response(interaction.id, &interaction.token, &response)
-                .await;
-            Ok(())
-        }
-    }
+    Ok(())
 }
 
 async fn handle_remind_component(
