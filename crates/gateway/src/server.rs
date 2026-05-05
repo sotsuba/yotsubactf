@@ -1,12 +1,18 @@
 use crate::state::AppState;
 use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
-use metrics_exporter_prometheus::PrometheusBuilder;
+use metrics_exporter_prometheus::{Matcher, PrometheusBuilder};
 use serde_json::json;
 use std::sync::Arc;
 use tracing::info;
 
 pub async fn run_server(state: Arc<AppState>, port: u16) {
     let recorder_handle = PrometheusBuilder::new()
+        .set_buckets_for_metric(
+            Matcher::Full("gateway_command_latency_seconds".to_string()),
+            // Optimized for Discord bot: most commands take 100ms-3s
+            &[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 10.0],
+        )
+        .unwrap()
         .install_recorder()
         .expect("failed to install prometheus recorder");
 
