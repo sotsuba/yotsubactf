@@ -23,7 +23,7 @@ impl SlashCommand for HelpCommand {
 }
 
 pub fn handle() -> InteractionResponse {
-    let embed = CtfEmbed::new("CTF Bot — Commands")
+    let embed = CtfEmbed::new("YotsubaCTF — Commands")
         .description(
             "**`/ping`** — Check bot responsiveness\n\
              **`/upcoming [count]`** — List the next scheduled CTFs (max 20)\n\

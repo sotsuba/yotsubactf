@@ -17,7 +17,7 @@ pub fn build_event_notification(event: &CtfEvent) -> Value {
         .url(event.url.clone())
         .description(format!("Starts <t:{start_ts}:R>"))
         .color(COLOR_BRAND)
-        .footer("CTF Bot • new event")
+        .footer("YotsubaCTF • new event")
         .field("⏰ Starts", format!("<t:{start_ts}:F>"), true)
         .field("🏁 Ends", format!("<t:{end_ts}:F>"), true)
         .field("📋 Format", format.to_string(), true)
