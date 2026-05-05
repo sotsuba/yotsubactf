@@ -350,6 +350,20 @@ impl ReminderRepository for InMemoryReminderRepository {
             .count() as i64)
     }
 
+    async fn count_all_active(&self, user_id: &str) -> Result<i64> {
+        Ok(self
+            .reminders
+            .read()
+            .await
+            .iter()
+            .filter(|r| r.user_id == user_id)
+            .filter(|r| match r.kind {
+                ReminderKind::Recurring => r.repeat_until.is_none_or(|until| r.remind_at <= until),
+                _ => r.last_sent_at.is_none(),
+            })
+            .count() as i64)
+    }
+
     async fn advance_or_delete(&self, id: Uuid) -> Result<ReminderAdvanceResult> {
         let mut reminders = self.reminders.write().await;
         let pos = reminders

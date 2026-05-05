@@ -73,6 +73,12 @@ impl ReminderRepository for PostgresReminderRepository {
             }
         }
 
+        // Global quota for all reminders (Event + Timer + Recurring)
+        let total_count = self.count_all_active(&reminder.user_id).await?;
+        if total_count >= 50 {
+            return Ok(CreateReminderOutcome::QuotaExceeded);
+        }
+
         let result = sqlx::query!(
             r#"
             INSERT INTO reminders (
@@ -264,6 +270,31 @@ impl ReminderRepository for PostgresReminderRepository {
             WHERE user_id = $1
               AND kind = 'recurring'
               AND remind_at <= repeat_until
+            "#,
+            user_id
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
+
+        Ok(count.unwrap_or(0))
+    }
+
+    async fn count_all_active(&self, user_id: &str) -> CtfResult<i64> {
+        let count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*)
+            FROM reminders
+            WHERE user_id = $1
+              AND (
+                  -- One-shot: not sent AND not stale (older than 1h missed window)
+                  (kind IN ('event', 'timer') 
+                    AND last_sent_at IS NULL 
+                    AND remind_at >= NOW() - INTERVAL '1 hour')
+                  OR
+                  -- Recurring: series not exhausted
+                  (kind = 'recurring' AND remind_at <= repeat_until)
+              )
             "#,
             user_id
         )
