@@ -1,66 +1,168 @@
 {
-  "annotations": { "list": [] },
-  "editable": true,
-  "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "id": 1,
-  "links": [],
-  "liveNow": false,
-  "panels": [
-    {
-      "title": "Command Rate",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "targets": [
-        {
-          "expr": "sum(rate(gateway_commands_total[5m])) by (command)",
-          "legendFormat": "{{command}}"
-        }
-      ]
-    },
-    {
-      "title": "Command Latency (p99)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(gateway_command_latency_seconds_bucket[5m])) by (le, command))",
-          "legendFormat": "{{command}}"
-        }
-      ]
-    },
-    {
-      "title": "API Error Rate",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "targets": [
-        {
-          "expr": "sum(rate(ctftime_api_requests_total{status=~\"[45].*|error\"}[5m])) by (endpoint, status)",
-          "legendFormat": "{{endpoint}} ({{status}})"
-        }
-      ]
-    },
-    {
-      "title": "API Latency (p90)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.9, sum(rate(ctftime_api_latency_seconds_bucket[5m])) by (le, endpoint))",
-          "legendFormat": "{{endpoint}}"
-        }
-      ]
-    }
-  ],
-  "refresh": "10s",
-  "schemaVersion": 39,
-  "tags": [],
-  "templating": { "list": [] },
-  "time": { "from": "now-1h", "to": "now" },
-  "timepicker": {},
-  "timezone": "",
   "title": "CTFBot Gateway",
   "uid": "ctfbot-gateway",
-  "version": 1,
-  "weekStart": ""
+  "refresh": "15s",
+  "time": { "from": "now-3h", "to": "now" },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "title": "Commands (1h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [{
+        "expr": "sum(increase(gateway_commands_total[1h]))",
+        "legendFormat": ""
+      }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "title": "Success Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [{
+        "expr": "sum(rate(gateway_commands_total{success=\"true\"}[5m])) / sum(rate(gateway_commands_total[5m]))",
+        "legendFormat": ""
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": 0    },
+              { "color": "yellow", "value": 0.90 },
+              { "color": "green",  "value": 0.98 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Guilds (subscribed)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [{
+        "expr": "bot_guilds_total",
+        "legendFormat": ""
+      }]
+    },
+    {
+      "title": "Rate Limited (5m)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [{
+        "expr": "sum(increase(gateway_rate_limit_total[5m]))",
+        "legendFormat": ""
+      }]
+    },
+    {
+      "title": "Redis Miss Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "targets": [{
+        "expr": "sum(rate(db_redis_misses_total[5m])) / (sum(rate(db_redis_hits_total[5m])) + sum(rate(db_redis_misses_total[5m])))",
+        "legendFormat": ""
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": 0    },
+              { "color": "yellow", "value": 0.3  },
+              { "color": "red",    "value": 0.7  }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Command Rate (per second)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [{
+        "expr": "sum(rate(gateway_commands_total[5m])) by (command)",
+        "legendFormat": "{{command}}"
+      }]
+    },
+    {
+      "title": "Top Commands (24h)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [{
+        "expr": "sort_desc(sum(increase(gateway_commands_total[24h])) by (command))",
+        "legendFormat": "{{command}}"
+      }]
+    },
+    {
+      "title": "Average Latency by Command",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [{
+        "expr": "rate(gateway_command_latency_seconds_sum[5m]) / rate(gateway_command_latency_seconds_count[5m])",
+        "legendFormat": "avg {{command}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "title": "Latency p50 / p99 (cần Histogram fix)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(gateway_command_latency_seconds_bucket[5m])) by (le, command))",
+          "legendFormat": "p50 {{command}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(gateway_command_latency_seconds_bucket[5m])) by (le, command))",
+          "legendFormat": "p99 {{command}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "title": "Failed Commands",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [{
+        "expr": "sum(rate(gateway_commands_total{success=\"false\"}[5m])) by (command)",
+        "legendFormat": "{{command}}"
+      }]
+    },
+    {
+      "title": "Slash vs Component",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [{
+        "expr": "sum(rate(gateway_commands_total[5m])) by (kind)",
+        "legendFormat": "{{kind}}"
+      }]
+    },
+    {
+      "title": "CTFTime API — Success vs Error",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(ctftime_api_requests_total{status=\"200\"}[5m])) by (endpoint)",
+          "legendFormat": "✓ {{endpoint}}"
+        },
+        {
+          "expr": "sum(rate(ctftime_api_requests_total{status=~\"[45]..|error\"}[5m])) by (endpoint, status)",
+          "legendFormat": "✗ {{endpoint}} {{status}}"
+        }
+      ]
+    },
+    {
+      "title": "CTFTime API Latency p90",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [{
+        "expr": "histogram_quantile(0.9, sum(rate(ctftime_api_latency_seconds_bucket[5m])) by (le, endpoint))",
+        "legendFormat": "p90 {{endpoint}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    }
+  ]
 }
