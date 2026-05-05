@@ -185,6 +185,29 @@ services:
     networks:
       - monitoring
 
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - ./monitoring/loki/rules:/loki/rules:ro
+
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring
+
+
   metabase:
     image: metabase/metabase:v0.51.1
     restart: unless-stopped
