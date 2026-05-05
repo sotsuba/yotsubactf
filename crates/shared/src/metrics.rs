@@ -14,6 +14,10 @@ pub const SCHEDULER_REMINDERS_FIRED: &str = "scheduler_reminders_fired_total";
 
 pub const SCHEDULER_TASK_DURATION: &str = "scheduler_task_duration_seconds";
 pub const SCHEDULER_TASKS_TOTAL: &str = "scheduler_tasks_total";
+pub const SCHEDULER_ENRICH_FAIL_TOTAL: &str = "scheduler_enrich_fail_total";
 
 pub const CTFTIME_API_REQUESTS_TOTAL: &str = "ctftime_api_requests_total";
 pub const CTFTIME_API_LATENCY: &str = "ctftime_api_latency_seconds";
+
+pub const DISCORD_DELIVERY_TOTAL: &str = "discord_delivery_total";
+pub const DISCORD_DELIVERY_LATENCY: &str = "discord_delivery_latency_seconds";

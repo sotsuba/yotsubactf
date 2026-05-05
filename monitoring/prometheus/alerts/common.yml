@@ -39,3 +39,17 @@ groups:
           severity: critical
         annotations:
           summary: "Disk usage on {{ $labels.instance }} is over 90%"
+
+  - name: ctfbot.notifications
+    rules:
+      - alert: DiscordDeliveryErrorRate
+        expr: |
+          sum by (type) (rate(discord_delivery_total{status="err"}[15m])) 
+          / 
+          sum by (type) (rate(discord_delivery_total[15m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Discord delivery error rate (>5%) for {{ $labels.type }}"
+          description: "Discord notifications for {{ $labels.type }} are failing. Check scheduler logs."

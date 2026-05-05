@@ -169,11 +169,14 @@ async fn enrich_event(http: &Client, ev: &mut EnrichedEvent) {
                 );
             }
         }
-        Err(err) => error!(
-            ctftime_id = ev.raw.ctftime_id,
-            ?err,
-            "CTFTime HTML fetch failed"
-        ),
+        Err(err) => {
+            metrics::counter!(shared::metrics::SCHEDULER_ENRICH_FAIL_TOTAL).increment(1);
+            error!(
+                ctftime_id = ev.raw.ctftime_id,
+                ?err,
+                "CTFTime HTML fetch failed"
+            );
+        }
     }
 
     // ── Fetch #2: CTF's own website ───────────────────────────────────────
