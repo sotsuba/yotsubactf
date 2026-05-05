@@ -1,0 +1,13 @@
+## Summary
+<!-- What does this PR do? -->
+
+## Type of change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Refactor
+- [ ] Docs / CI
+
+## Checklist
+- [ ] `cargo fmt` and `cargo clippy` pass
+- [ ] Tests added or updated
+- [ ] If SQL queries changed: `make prepare` run and `.sqlx/` committed
