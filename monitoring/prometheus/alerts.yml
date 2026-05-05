@@ -202,3 +202,35 @@ groups:
             out. Current rate: {{ $value | humanizePercentage }}.
             Event data may fail to update.
           runbook_url: "https://github.com/you/ctftime-discord-bot/wiki/runbooks/ctftime-api-errors"
+
+  # ---------------------------------------------------------------------------
+  # Host Monitoring
+  # ---------------------------------------------------------------------------
+  - name: host.monitoring
+    rules:
+      - alert: HostCpuHigh
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host CPU utilization is high ({{ $value | humanizePercentage }})"
+          description: "Host CPU utilization on {{ $labels.instance }} has been over 85% for 5 minutes."
+
+      - alert: HostMemLow
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory is low ({{ $value | humanizePercentage }} free)"
+          description: "Less than 10% memory is available on {{ $labels.instance }}."
+
+      - alert: HostDiskFull
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/rootfs"} / node_filesystem_size_bytes{mountpoint="/rootfs"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host disk is almost full ({{ $value | humanizePercentage }} used)"
+          description: "Disk usage on {{ $labels.instance }} is over 90%."
