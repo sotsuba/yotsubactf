@@ -1,0 +1,41 @@
+# monitoring/prometheus/alerts/common.yml
+# Infrastructure and availability alerts (wanted in all environments)
+
+groups:
+  - name: watchdog
+    rules:
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: info
+        annotations:
+          summary: "Alertmanager pipeline is operational"
+          description: "Confirming Prometheus -> Alertmanager pipeline health."
+
+  - name: ctfbot.availability
+    rules:
+      - alert: GatewayDown
+        expr: up{job="gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Gateway is unreachable"
+
+      - alert: SchedulerDown
+        expr: up{job="scheduler"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scheduler is unreachable"
+
+  - name: host.monitoring
+    rules:
+      - alert: HostDiskFull
+        expr: (1 - (node_filesystem_avail_bytes{mountpoint="/rootfs"} / node_filesystem_size_bytes{mountpoint="/rootfs"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk usage on {{ $labels.instance }} is over 90%"

@@ -6,10 +6,16 @@ RUN apk add --no-cache gettext libc6-compat
 
 COPY --from=alertmanager_bin /bin/alertmanager /bin/alertmanager
 COPY --from=alertmanager_bin /bin/amtool /bin/amtool
-COPY --from=alertmanager_bin /etc/alertmanager/alertmanager.yml /etc/alertmanager/alertmanager.yml
+
+# Copy all config variants
+COPY monitoring/alertmanager/ /etc/alertmanager/
 
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
-    echo 'envsubst < /etc/alertmanager/alertmanager.yml.tmpl > /etc/alertmanager/alertmanager.yml' >> /entrypoint.sh && \
+    echo 'if [ -f "/etc/alertmanager/alertmanager.${ENV:-dev}.yml.tmpl" ]; then' >> /entrypoint.sh && \
+    echo '  envsubst < "/etc/alertmanager/alertmanager.${ENV:-dev}.yml.tmpl" > /etc/alertmanager/alertmanager.yml' >> /entrypoint.sh && \
+    echo 'else' >> /entrypoint.sh && \
+    echo '  cp "/etc/alertmanager/alertmanager.${ENV:-dev}.yml" /etc/alertmanager/alertmanager.yml' >> /entrypoint.sh && \
+    echo 'fi' >> /entrypoint.sh && \
     echo 'exec /bin/alertmanager "$@"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 

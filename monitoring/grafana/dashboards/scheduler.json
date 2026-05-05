@@ -84,7 +84,52 @@
           "legendFormat": "Disk Usage (%)"
         }
       ]
+    },
+    {
+      "title": "Redis Memory Usage (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "(redis_memory_used_bytes / redis_memory_max_bytes) * 100",
+          "legendFormat": "Used Memory (%)"
+        }
+      ]
+    },
+    {
+      "title": "Redis Eviction Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(redis_evicted_keys_total[5m])",
+          "legendFormat": "Evictions/s"
+        }
+      ]
+    },
+    {
+      "title": "Redis Keyspace Size",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum(redis_db_keys) by (db)",
+          "legendFormat": "DB {{db}}"
+        }
+      ]
+    },
+    {
+      "title": "Redis Connected Clients",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 24 },
+      "targets": [
+        {
+          "expr": "redis_connected_clients",
+          "legendFormat": "Clients"
+        }
+      ]
     }
+
 
   ],
   "refresh": "10s",

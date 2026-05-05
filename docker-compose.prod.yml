@@ -122,6 +122,9 @@ services:
   prometheus:
     image: prom/prometheus:v3.1.0
     restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.prod.yml'
+      - '--storage.tsdb.path=/prometheus'
     volumes:
       - ./monitoring/prometheus:/etc/prometheus:ro
     ports:
@@ -129,6 +132,7 @@ services:
     networks:
       - monitoring
       - backend
+
 
   node-exporter:
     image: quay.io/prometheus/node-exporter:latest
@@ -145,6 +149,15 @@ services:
     networks:
       - backend
 
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    environment:
+      - REDIS_ADDR=redis-prod:6379
+    restart: unless-stopped
+    networks:
+      - backend
+
+
 
   alertmanager:
     build:
@@ -152,14 +165,17 @@ services:
       dockerfile: ./monitoring/alertmanager/Dockerfile
     restart: unless-stopped
     volumes:
-      - ./monitoring/alertmanager/alertmanager.yml.tmpl:/etc/alertmanager/alertmanager.yml.tmpl:ro
+      - ./monitoring/alertmanager:/etc/alertmanager:ro
+
     environment:
+      - ENV=prod
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
       - HEALTHCHECKS_PING_URL=${HEALTHCHECKS_PING_URL}
     ports:
       - "127.0.0.1:9093:9093"
     networks:
       - monitoring
+
 
   grafana:
     image: grafana/grafana:11.4.0
