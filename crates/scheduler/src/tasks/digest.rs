@@ -144,7 +144,7 @@ async fn send_digest(
         "title": format!("🗓️  Weekly CTF Digest — Week {week_num}"),
         "description": description,
         "color": 0x2f6fed,
-        "footer": { "text": "CTF Bot" },
+        "footer": { "text": "YotsubaCTF" },
         "timestamp": now.to_rfc3339(),
     });
 

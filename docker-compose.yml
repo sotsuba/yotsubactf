@@ -1,3 +1,9 @@
+secrets:
+  discord_webhook:
+    file: ./monitoring/secrets/discord_webhook
+  healthchecks_url:
+    file: ./monitoring/secrets/healthchecks_url
+
 services:
   # ============================================================================
   # Core Infrastructure
@@ -108,13 +114,27 @@ services:
     image: prom/prometheus:v3.1.0
     restart: unless-stopped
     volumes:
-      # Mount configuration as read-only (:ro) for security
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus:/etc/prometheus:ro
     ports:
       - "127.0.0.1:9090:9090"
     networks:
       - monitoring
       - backend
+
+  alertmanager:
+    build:
+      context: .
+      dockerfile: ./monitoring/alertmanager/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml.tmpl:/etc/alertmanager/alertmanager.yml.tmpl:ro
+    environment:
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - HEALTHCHECKS_PING_URL=${HEALTHCHECKS_PING_URL}
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks:
+      - monitoring
 
   grafana:
     image: grafana/grafana:11.4.0
