@@ -65,8 +65,11 @@ pub async fn handle(
                 style: ButtonStyle::Primary,
                 disabled: false,
                 emoji: None,
+                id: None,
+                sku_id: None,
                 url: None,
             })],
+            id: None,
         })]);
     }
 

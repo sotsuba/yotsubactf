@@ -60,7 +60,9 @@ pub async fn handle(
         custom_id: None,
         disabled: false,
         emoji: None,
+        id: None,
         label: Some("View on CTFtime".to_string()),
+        sku_id: None,
         style: ButtonStyle::Link,
         url: Some(ctftime_url),
     });
@@ -71,6 +73,7 @@ pub async fn handle(
             embeds: Some(vec![embed.now().build()]),
             components: Some(vec![Component::ActionRow(ActionRow {
                 components: vec![button],
+                id: None,
             })]),
             ..Default::default()
         }),

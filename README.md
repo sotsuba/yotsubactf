@@ -1,6 +1,10 @@
-# CTFTime Discord Bot
+# YotsubaCTF Discord Bot
 
-A robust, observable Discord bot for CTF teams, built with Rust. It tracks upcoming CTFs from CTFtime, manages team tracking, sends reminders, and provides detailed analytics.
+A robust, observable Discord bot for CTF teams, built with Rust.
+
+[![CI](https://github.com/sotsuba/yotsubactf/actions/workflows/ci.yml/badge.svg)](https://github.com/sotsuba/yotsubactf/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.95-orange.svg)](https://www.rust-lang.org)
 
 ## Features
 
@@ -10,6 +14,14 @@ A robust, observable Discord bot for CTF teams, built with Rust. It tracks upcom
 - **Writeup Search**: Find writeups for past CTFs directly from Discord.
 - **Observability**: Built-in Prometheus metrics and Grafana dashboards.
 - **Resilience**: Retries with exponential backoff for CTFtime API calls.
+
+## Screenshots
+
+### Event Commands
+![Upcoming events command](docs/assets/event_upcoming_preview.png)
+
+### Grafana Dashboard
+![Grafana monitoring](docs/assets/grafana_preview.png)
 
 ## Tech Stack
 

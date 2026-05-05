@@ -125,7 +125,9 @@ impl PaginationNav {
                     custom_id: Some(self.prev_id),
                     disabled: !self.has_prev,
                     emoji: None,
+                    id: None,
                     label: Some("◀ Prev".to_string()),
+                    sku_id: None,
                     style: ButtonStyle::Secondary,
                     url: None,
                 }),
@@ -133,11 +135,14 @@ impl PaginationNav {
                     custom_id: Some(self.next_id),
                     disabled: !self.has_next,
                     emoji: None,
+                    id: None,
                     label: Some("Next ►".to_string()),
+                    sku_id: None,
                     style: ButtonStyle::Secondary,
                     url: None,
                 }),
             ],
+            id: None,
         })
     }
 }
@@ -233,7 +238,9 @@ pub fn join_community_response(
                 custom_id: None, // URL buttons must not have a custom_id
                 disabled: false,
                 emoji: None,
+                id: None,
                 label: Some(link.platform.emoji_label().to_string()),
+                sku_id: None,
                 style: ButtonStyle::Link,
                 url: Some(link.url.clone()),
             })
@@ -254,6 +261,7 @@ pub fn join_community_response(
             embeds: Some(vec![embed]),
             components: Some(vec![Component::ActionRow(ActionRow {
                 components: buttons,
+                id: None,
             })]),
             flags: Some(MessageFlags::EPHEMERAL),
             ..Default::default()

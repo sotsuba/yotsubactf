@@ -249,6 +249,9 @@ pub trait ReminderRepository: Send + Sync {
     /// Count active recurring reminders for a user (for cap enforcement).
     async fn count_active_recurring(&self, user_id: &str) -> crate::error::CtfResult<i64>;
 
+    /// Count all active/pending reminders for a user (total cap).
+    async fn count_all_active(&self, user_id: &str) -> crate::error::CtfResult<i64>;
+
     /// Cancel by UUID, scoped to user_id. Returns false if not found.
     async fn cancel(&self, id: Uuid, user_id: &str) -> crate::error::CtfResult<bool>;
 
