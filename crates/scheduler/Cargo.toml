@@ -43,6 +43,7 @@ async-trait = { workspace = true }
 metrics = "0.24.5"
 metrics-exporter-prometheus = "0.18.3"
 url = "2.5.8"
+rustls.workspace = true
 
 [dev-dependencies]
 tokio        = { workspace = true }
