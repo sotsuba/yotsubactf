@@ -3,22 +3,23 @@
 # ------------------------------------------------------------------------------
 # Global Build Arguments
 # ------------------------------------------------------------------------------
-ARG RUST_VERSION=1.88
+ARG RUST_VERSION=1.95
 ARG DISTROLESS_IMAGE=gcr.io/distroless/cc-debian12
 
 # ------------------------------------------------------------------------------
 # Stage 0: Toolchain Preparation (chef)
 # ------------------------------------------------------------------------------
-FROM rust:${RUST_VERSION}-slim AS chef
+FROM rust:${RUST_VERSION}-slim-bookworm AS chef
 
 # Leverage BuildKit cache mounts to prevent redundant downloads across builds.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         pkg-config \
+        libssl-dev \
     && rm -rf /var/lib/apt/lists/*
-# Note: libssl-dev is omitted assuming reqwest utilizes rustls-tls (pure-Rust). 
-# Reintroduce if OpenSSL dynamic linking is explicitly required by a crate.
+# Note: libssl-dev is included as it is required by crates that do not 
+# default to rustls (e.g., twilight-http 0.15).
 
 # Cache Cargo registry and git index for faster cargo-chef installation.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -53,7 +54,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     cargo chef cook --release \
         --recipe-path recipe.json \
-        -p gateway -p scheduler
+        -p shared -p db -p gateway -p scheduler
 
 COPY . .
 
@@ -62,7 +63,7 @@ COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
-    cargo build --release -p gateway -p scheduler \
+    cargo build --release --workspace -p gateway -p scheduler \
     && cp target/release/gateway /app/gateway \
     && cp target/release/scheduler /app/scheduler \
     && strip /app/gateway /app/scheduler

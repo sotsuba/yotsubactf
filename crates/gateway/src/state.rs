@@ -16,11 +16,6 @@ use std::sync::Arc;
 use governor::{Quota, RateLimiter};
 use std::num::NonZeroU32;
 
-/*
-pub type UserRateLimiter =
-    RateLimiter<u64, DefaultKeyedStateStore<u64>, governor::clock::DefaultClock>;
-*/
-
 pub struct AppState {
     pub guilds: Arc<dyn GuildRepository>,
     pub events: Arc<dyn ReadCtfRepository>,

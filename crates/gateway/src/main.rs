@@ -4,8 +4,10 @@ use std::sync::Arc;
 use tokio::task::JoinSet;
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
-use twilight_gateway::{Intents, Shard, ShardId};
+use twilight_gateway::{Config, Intents, Shard, ShardId};
 use twilight_http::Client as HttpClient;
+use twilight_model::gateway::payload::outgoing::update_presence::UpdatePresencePayload;
+use twilight_model::gateway::presence::{Activity, ActivityType, Status};
 use twilight_model::id::Id;
 use twilight_model::id::marker::{ApplicationMarker, GuildMarker};
 
@@ -181,7 +183,34 @@ async fn main() -> Result<()> {
 
         join_set.spawn(async move {
             let shard_id = ShardId::new(shard_id as u64, shard_total as u64);
-            let mut shard = Shard::new(shard_id, token, intents);
+
+            let presence = UpdatePresencePayload::new(
+                vec![Activity {
+                    application_id: None,
+                    assets: None,
+                    buttons: Vec::new(),
+                    created_at: None,
+                    details: None,
+                    emoji: None,
+                    flags: None,
+                    id: None,
+                    instance: None,
+                    kind: ActivityType::Watching,
+                    name: "🍀 This is zaza!?".to_string(),
+                    party: None,
+                    secrets: None,
+                    state: None,
+                    timestamps: None,
+                    url: None,
+                }],
+                false,
+                None,
+                Status::Online,
+            )
+            .expect("valid presence");
+
+            let config = Config::builder(token, intents).presence(presence).build();
+            let mut shard = Shard::with_config(shard_id, config);
 
             loop {
                 tokio::select! {

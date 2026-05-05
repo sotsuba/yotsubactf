@@ -32,22 +32,40 @@ pub async fn handle(
     let hours = opt_int(&opts, "hours").unwrap_or(0);
     let minutes = opt_int(&opts, "minutes").unwrap_or(0);
 
-    let offset_secs = days * 86400 + hours * 3600 + minutes * 60;
+    // Validate fields first
+    if days < 0 || hours < 0 || minutes < 0 {
+        return Ok(ephemeral_reply("Time values must be non-negative."));
+    }
+
+    if days > 90 || hours > 23 || minutes > 59 {
+        return Ok(ephemeral_reply(
+            "Invalid time: days ≤ 90, hours ≤ 23, minutes ≤ 59.",
+        ));
+    }
+
+    // Checked arithmetic to avoid overflow
+    let offset_secs = days
+        .checked_mul(86400)
+        .and_then(|d| d.checked_add(hours * 3600))
+        .and_then(|dh| dh.checked_add(minutes * 60))
+        .ok_or_else(|| shared::CtfError::InvalidInput("Time overflow".into()))?;
+
     if offset_secs == 0 {
         return Ok(ephemeral_reply(
             "Specify at least one of: days, hours, minutes.",
         ));
     }
 
-    let now = Utc::now();
-    let remind_at = now + Duration::seconds(offset_secs);
-
-    if remind_at > now + Duration::days(super::validation::MAX_REMINDER_DAYS) {
+    // Check total (redundant but explicit)
+    if offset_secs > super::validation::MAX_REMINDER_DAYS * 86400 {
         return Ok(ephemeral_reply(format!(
             "Reminder time is too far in the future (max {} days).",
             super::validation::MAX_REMINDER_DAYS
         )));
     }
+
+    let now = Utc::now();
+    let remind_at = now + Duration::seconds(offset_secs);
 
     let reminder = Reminder {
         id: Uuid::nil(),

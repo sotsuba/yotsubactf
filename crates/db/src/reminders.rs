@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use shared::{CtfResult, Reminder, ReminderAdvanceResult, ReminderRepository};
+use shared::{
+    CreateReminderOutcome, CtfResult, Reminder, ReminderAdvanceResult, ReminderRepository,
+};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -44,20 +46,40 @@ impl PostgresReminderRepository {
 
 #[async_trait]
 impl ReminderRepository for PostgresReminderRepository {
-    async fn create(&self, reminder: &Reminder) -> CtfResult<Reminder> {
+    async fn create(&self, reminder: &Reminder) -> CtfResult<CreateReminderOutcome> {
         let kind = DbReminderKind::from(reminder.kind);
 
-        let row = sqlx::query!(r#"
+        // Check for duplicates first if it's an event reminder
+        if let Some(ctftime_id) = reminder.ctftime_id {
+            let exists = sqlx::query_scalar!(
+                "SELECT EXISTS(SELECT 1 FROM reminders WHERE user_id = $1 AND ctftime_id = $2)",
+                reminder.user_id,
+                ctftime_id
+            )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(crate::db_err)?;
+
+            if exists.unwrap_or(false) {
+                return Ok(CreateReminderOutcome::AlreadyExists);
+            }
+        }
+
+        // Check quota for recurring reminders
+        if matches!(reminder.kind, shared::ReminderKind::Recurring) {
+            let count = self.count_active_recurring(&reminder.user_id).await?;
+            if count >= 10 {
+                return Ok(CreateReminderOutcome::QuotaExceeded);
+            }
+        }
+
+        let result = sqlx::query!(
+            r#"
             INSERT INTO reminders (
                 user_id, kind, ctftime_id, event_title, event_start_at,
                 message, remind_at, interval_secs, repeat_until, fire_count_max
             )
-            SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-            WHERE $2 != 'recurring' 
-               OR (SELECT COUNT(*) FROM reminders WHERE user_id = $1 AND kind = 'recurring') < 10
-            RETURNING id, user_id, kind as "kind: DbReminderKind", ctftime_id, event_title, event_start_at,
-                      message, remind_at, interval_secs, repeat_until, fire_count_max,
-                      sent_count, last_sent_at, created_at
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
             reminder.user_id,
             kind as _,
@@ -70,34 +92,16 @@ impl ReminderRepository for PostgresReminderRepository {
             reminder.repeat_until,
             reminder.fire_count_max,
         )
-        .fetch_optional(&self.pool)
-        .await.map_err(crate::db_err)?;
+        .execute(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
 
-        let row = match row {
-            Some(r) => r,
-            None => {
-                return Err(shared::CtfError::InvalidInput(
-                    "You have reached the maximum limit of 10 recurring reminders.".to_string(),
-                ));
-            }
-        };
-
-        Ok(Reminder {
-            kind: row.kind.into(),
-            id: row.id,
-            user_id: row.user_id,
-            ctftime_id: row.ctftime_id,
-            event_title: row.event_title,
-            event_start_at: row.event_start_at,
-            message: row.message,
-            remind_at: row.remind_at,
-            interval_secs: row.interval_secs,
-            repeat_until: row.repeat_until,
-            fire_count_max: row.fire_count_max,
-            sent_count: row.sent_count,
-            last_sent_at: row.last_sent_at,
-            created_at: row.created_at,
-        })
+        if result.rows_affected() > 0 {
+            Ok(CreateReminderOutcome::Created)
+        } else {
+            // Should not happen given the checks above, but just in case
+            Ok(CreateReminderOutcome::AlreadyExists)
+        }
     }
 
     async fn fetch_due(&self, now: DateTime<Utc>) -> CtfResult<Vec<Reminder>> {
@@ -170,8 +174,8 @@ impl ReminderRepository for PostgresReminderRepository {
                 UPDATE reminders r
                 SET
                     remind_at    = CASE WHEN a.op = 'advance'
-                                        THEN a.next_remind_at
-                                        ELSE r.remind_at END,
+                                         THEN a.next_remind_at
+                                         ELSE r.remind_at END,
                     sent_count   = r.sent_count + 1,
                     last_sent_at = NOW()
                 FROM action a
@@ -192,13 +196,14 @@ impl ReminderRepository for PostgresReminderRepository {
             FROM action
             LEFT JOIN updated u ON u.id = action.id
             LEFT JOIN deleted d ON d.id = action.id
+            WHERE action.id = $1
         "#, id)
         .fetch_one(&self.pool).await.map_err(crate::db_err)?;
 
         Ok(match row.result.as_deref() {
             Some("advanced") => ReminderAdvanceResult::Advanced {
-                next_remind_at: row.next_remind_at.unwrap(),
-                sent_count: row.sent_count.unwrap(),
+                next_remind_at: row.next_remind_at,
+                sent_count: row.sent_count,
             },
             _ => ReminderAdvanceResult::Deleted,
         })

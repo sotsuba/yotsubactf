@@ -10,9 +10,9 @@ pub mod metrics;
 pub mod util;
 
 pub use contracts::{
-    CommandLogRepository, CtfEventRepository, GuildRepository, Notifier, ReadCtfRepository,
-    ReminderAdvanceResult, ReminderRepository, Subscription, TeamRepository, UpcomingFilter,
-    WriteCtfRepository, WriteupRepository,
+    CommandLogRepository, CompletedFilter, CtfEventRepository, GuildRepository, Notifier,
+    ReadCtfRepository, ReminderAdvanceResult, ReminderRepository, Subscription, TeamRepository,
+    UpcomingFilter, WriteCtfRepository, WriteupRepository,
 };
 pub use embed::CtfEmbed;
 pub use error::{CtfError, CtfErrorContext, CtfResult};
