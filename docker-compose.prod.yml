@@ -58,8 +58,9 @@ services:
 
   alertmanager:
     build:
-      context: .
-      dockerfile: ./monitoring/alertmanager/Dockerfile
+      context: ./monitoring/alertmanager
+      dockerfile: Dockerfile
+
     restart: unless-stopped
     environment:
       - ENV=prod
@@ -128,6 +129,15 @@ services:
       - REDIS_ADDR=redis:6379
     networks:
       - backend
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://ctfbot:${POSTGRES_PASSWORD}@postgres:5432/ctfbot?sslmode=disable"
+    networks:
+      - backend
+
 
   metabase:
     image: metabase/metabase:v0.51.1

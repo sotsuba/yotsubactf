@@ -128,7 +128,41 @@
           "legendFormat": "Clients"
         }
       ]
+    },
+    {
+      "title": "Postgres Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 32 },
+      "targets": [
+        {
+          "expr": "sum(pg_stat_activity_count) by (datname)",
+          "legendFormat": "{{datname}}"
+        }
+      ]
+    },
+    {
+      "title": "Postgres Max Transaction Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 32 },
+      "targets": [
+        {
+          "expr": "pg_stat_activity_max_tx_duration",
+          "legendFormat": "Max TX Duration (s)"
+        }
+      ]
+    },
+    {
+      "title": "Postgres Index Hit Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 32 },
+      "targets": [
+        {
+          "expr": "sum(pg_statio_user_indexes_idx_blks_hit) / (sum(pg_statio_user_indexes_idx_blks_hit) + sum(pg_statio_user_indexes_idx_blks_read))",
+          "legendFormat": "Index Hit Rate"
+        }
+      ]
     }
+
 
 
   ],

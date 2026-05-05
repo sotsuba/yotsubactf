@@ -8,7 +8,8 @@ COPY --from=alertmanager_bin /bin/alertmanager /bin/alertmanager
 COPY --from=alertmanager_bin /bin/amtool /bin/amtool
 
 # Copy all config variants
-COPY monitoring/alertmanager/ /etc/alertmanager/
+COPY . /etc/alertmanager/
+
 
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo 'if [ -f "/etc/alertmanager/alertmanager.${ENV:-dev}.yml.tmpl" ]; then' >> /entrypoint.sh && \
