@@ -5,6 +5,7 @@ services:
     environment:
       POSTGRES_USER: ctfbot
       POSTGRES_DB: ctfbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctfbot}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ctfbot"]
       interval: 5s
@@ -33,7 +34,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres:5432/ctfbot
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot
       REDIS_URL: redis://redis:6379
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
@@ -54,7 +55,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres:5432/ctfbot
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot
       REDIS_URL: redis://redis:6379
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
