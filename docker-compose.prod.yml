@@ -16,6 +16,34 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - backend
+
+
+  db-backup:
+    build:
+      context: .
+      dockerfile: scripts/backup/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres-prod
+      POSTGRES_DB: ctfbot_prod
+      POSTGRES_USER: ctfbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT}
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_KEY}
+      AWS_DEFAULT_REGION: ${BACKUP_S3_REGION}
+    volumes:
+      - ./scripts/backup/pg_backup.sh:/scripts/pg_backup.sh:ro
+    networks:
+      - backend
+
+
 
   redis-prod:
     image: redis:7-alpine
@@ -26,6 +54,9 @@ services:
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
+    networks:
+      - backend
+
 
   scheduler-prod:
     build:
@@ -52,6 +83,11 @@ services:
       HEALTH_PORT: 8085
     ports:
       - "127.0.0.1:8086:8085"
+    networks:
+      backend:
+        aliases:
+          - scheduler
+
 
   gateway-prod:
     build:
@@ -75,7 +111,88 @@ services:
       HEALTH_PORT: 8085
     ports:
       - "127.0.0.1:8085:8085"
+    networks:
+      backend:
+        aliases:
+          - gateway
+
+  # ============================================================================
+  # Monitoring & Analytics
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - monitoring
+      - backend
+
+  alertmanager:
+    build:
+      context: .
+      dockerfile: ./monitoring/alertmanager/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml.tmpl:/etc/alertmanager/alertmanager.yml.tmpl:ro
+    environment:
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - HEALTHCHECKS_PING_URL=${HEALTHCHECKS_PING_URL}
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3030:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafdata_prod:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+  metabase:
+    image: metabase/metabase:v0.51.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - metabase_data_prod:/metabase-data
+    # Bypass default local H2 database in favor of Postgres for production-grade reliability
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ctfbot_prod
+      MB_DB_PORT: 5432
+      MB_DB_USER: ctfbot
+      MB_DB_PASS: ${POSTGRES_PASSWORD}
+      MB_DB_HOST: postgres-prod
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+    networks:
+      - backend
+      - monitoring
+
 
 volumes:
   pgdata_prod:
   redisdata_prod:
+  grafdata_prod:
+  metabase_data_prod:
+
+networks:
+  backend:
+  monitoring:
+
