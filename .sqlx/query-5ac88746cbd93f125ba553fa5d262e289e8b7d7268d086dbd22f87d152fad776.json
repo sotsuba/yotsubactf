@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT COUNT(*)\n            FROM reminders\n            WHERE user_id = $1\n              AND (\n                  -- One-shot: not sent AND not stale (older than 1h missed window)\n                  (kind IN ('event', 'timer') \n                    AND last_sent_at IS NULL \n                    AND remind_at >= NOW() - INTERVAL '1 hour')\n                  OR\n                  -- Recurring: series not exhausted\n                  (kind = 'recurring' AND remind_at <= repeat_until)\n              )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5ac88746cbd93f125ba553fa5d262e289e8b7d7268d086dbd22f87d152fad776"
+}
