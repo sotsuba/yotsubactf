@@ -518,7 +518,9 @@ fn build_pagination_components(
             )),
             disabled: false,
             emoji: None,
+            id: None,
             label: Some("⬅️ Previous".to_string()),
+            sku_id: None,
             style: ButtonStyle::Secondary,
             url: None,
         }));
@@ -534,7 +536,9 @@ fn build_pagination_components(
             )),
             disabled: false,
             emoji: None,
+            id: None,
             label: Some("Next ➡️".to_string()),
+            sku_id: None,
             style: ButtonStyle::Secondary,
             url: None,
         }));
@@ -545,6 +549,7 @@ fn build_pagination_components(
     } else {
         vec![Component::ActionRow(ActionRow {
             components: buttons,
+            id: None,
         })]
     }
 }

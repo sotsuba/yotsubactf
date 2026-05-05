@@ -34,6 +34,9 @@ fn interval_from_env(key: &str, default: u64) -> Duration {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
     dotenvy::dotenv().ok();
 
     tracing_subscriber::fmt()

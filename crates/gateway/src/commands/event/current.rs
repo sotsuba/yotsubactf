@@ -129,7 +129,9 @@ fn build_response(
                 custom_id: Some(format!("remind:{}", event.ctftime_id)),
                 disabled: false,
                 emoji: None,
+                id: None,
                 label: Some(format!("#{} {}", global_n, title_trunc)),
+                sku_id: None,
                 style: ButtonStyle::Primary,
                 url: None,
             })
@@ -139,6 +141,7 @@ fn build_response(
     for chunk in buttons.chunks(5) {
         extra_rows.push(Component::ActionRow(ActionRow {
             components: chunk.to_vec(),
+            id: None,
         }));
     }
 

@@ -15,3 +15,7 @@ anyhow = { workspace = true }
 async-trait = { workspace = true }
 tracing = { workspace = true }
 metrics = "0.24.5"
+
+[dev-dependencies]
+tokio = { workspace = true }
+dotenvy = { workspace = true }

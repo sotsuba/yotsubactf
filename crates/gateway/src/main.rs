@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::task::JoinSet;
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
-use twilight_gateway::{Config, Intents, Shard, ShardId};
+use twilight_gateway::{ConfigBuilder, Intents, Shard, ShardId, StreamExt};
 use twilight_http::Client as HttpClient;
 use twilight_model::gateway::payload::outgoing::update_presence::UpdatePresencePayload;
 use twilight_model::gateway::presence::{Activity, ActivityType, Status};
@@ -34,6 +34,9 @@ use util::{parse_id, parse_u16_env};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
     dotenvy::dotenv().ok();
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
@@ -182,7 +185,7 @@ async fn main() -> Result<()> {
         let shutdown = Arc::clone(&shutdown);
 
         join_set.spawn(async move {
-            let shard_id = ShardId::new(shard_id as u64, shard_total as u64);
+            let shard_id = ShardId::new(shard_id as u32, shard_total as u32);
 
             let presence = UpdatePresencePayload::new(
                 vec![Activity {
@@ -209,7 +212,9 @@ async fn main() -> Result<()> {
             )
             .expect("valid presence");
 
-            let config = Config::builder(token, intents).presence(presence).build();
+            let config = ConfigBuilder::new(token, intents)
+                .presence(presence)
+                .build();
             let mut shard = Shard::with_config(shard_id, config);
 
             loop {
@@ -217,12 +222,12 @@ async fn main() -> Result<()> {
                     biased;
                     _ = shutdown.notified() => {
                         info!(?shard_id, "Shard shutting down gracefully");
-                        shard.close(twilight_gateway::CloseFrame::NORMAL).await.ok();
+                        shard.close(twilight_gateway::CloseFrame::NORMAL);
                         break;
                     }
-                    item = shard.next_event() => {
+                    item = shard.next_event(twilight_gateway::EventTypeFlags::all()) => {
                         match item {
-                            Ok(event) => {
+                            Some(Ok(event)) => {
                                 if let twilight_gateway::Event::Ready(ref ready) = event {
                                     tracing::info!(
                                         ?shard_id,
@@ -238,13 +243,10 @@ async fn main() -> Result<()> {
                                     warn!(?err, ?shard_id, "Failed to handle gateway event");
                                 }
                             }
-                            Err(err) => {
-                                // Non-fatal receive errors (network hiccup, heartbeat
-                                // timeout) — twilight reconnects automatically; we just
-                                // log and keep looping. Fatal errors (invalid token)
-                                // will re-surface immediately.
+                            Some(Err(err)) => {
                                 error!(?err, ?shard_id, "Shard receive error");
                             }
+                            None => break,
                         }
                     }
                 }

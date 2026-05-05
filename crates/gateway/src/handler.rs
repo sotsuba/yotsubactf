@@ -34,10 +34,11 @@ pub async fn handle_event(
     application_id: Id<ApplicationMarker>,
     state: &Arc<AppState>,
 ) -> Result<()> {
-    if let Event::InteractionCreate(interaction) = event
-        && let Err(err) = handle_interaction(interaction.0, http, application_id, state).await
-    {
-        warn!(?err, ?shard_id, "interaction handler returned error");
+    if let Event::InteractionCreate(interaction) = event {
+        let interaction_inner = interaction.0;
+        if let Err(err) = handle_interaction(interaction_inner, http, application_id, state).await {
+            warn!(?err, ?shard_id, "interaction handler returned error");
+        }
     }
     Ok(())
 }

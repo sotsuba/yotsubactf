@@ -217,7 +217,9 @@ async fn handle_search(state: &AppState, name: String) -> CtfResult<InteractionR
             custom_id: None,
             disabled: false,
             emoji: None,
+            id: None,
             label: Some("View on CTFtime".to_string()),
+            sku_id: None,
             style: ButtonStyle::Link,
             url: Some(url),
         });
@@ -228,6 +230,7 @@ async fn handle_search(state: &AppState, name: String) -> CtfResult<InteractionR
                 embeds: Some(vec![embed]),
                 components: Some(vec![Component::ActionRow(ActionRow {
                     components: vec![button],
+                    id: None,
                 })]),
                 ..Default::default()
             }),
@@ -253,7 +256,9 @@ async fn handle_search(state: &AppState, name: String) -> CtfResult<InteractionR
                 custom_id: None,
                 disabled: false,
                 emoji: None,
+                id: None,
                 label: Some(team.name.clone()),
+                sku_id: None,
                 style: ButtonStyle::Link,
                 url: Some(url),
             }));
@@ -270,6 +275,7 @@ async fn handle_search(state: &AppState, name: String) -> CtfResult<InteractionR
                 embeds: Some(vec![embed]),
                 components: Some(vec![Component::ActionRow(ActionRow {
                     components: buttons,
+                    id: None,
                 })]),
                 ..Default::default()
             }),
