@@ -128,9 +128,9 @@ fn build_paged_response(
 ) -> InteractionResponse {
     let total_pages = (total_count as f64 / limit as f64).ceil() as i64;
     let title = if total_pages > 0 {
-        format!("Upcoming CTF events — Page {page} of {total_pages}")
+        format!("📅 Upcoming CTFs • {page}/{total_pages}")
     } else {
-        "Upcoming CTF events".to_string()
+        "📅 Upcoming CTFs".to_string()
     };
     let mut embed = CtfEmbed::new(title);
 
@@ -204,51 +204,36 @@ fn build_paged_response(
 }
 
 fn format_event_line(event: &CtfEvent, index: usize) -> String {
-    let local_start = format!("<t:{}:F>", event.start_time.timestamp());
-    let local_end = format!("<t:{}:F>", event.end_time.timestamp());
-    let format_tag = event
-        .format
-        .as_deref()
-        .map(|f| format!("Format: {f}"))
-        .unwrap_or_else(|| "Format: unknown".to_string());
+    let local_start = format!("<t:{}:f>", event.start_time.timestamp());
+    let local_end = format!("<t:{}:f>", event.end_time.timestamp());
 
-    let weight_tag = if let Some(w) = event.weight {
-        format!(" | ⚖️ Weight: {w}")
-    } else {
-        String::new()
-    };
+    let title = format!("[{}]({})", event.title, event.url);
 
-    let onsite_tag = if event.is_onsite {
+    let weight = event
+        .weight
+        .map(|w| format!(" | ⚖️ {w}"))
+        .unwrap_or_default();
+    let onsite = if event.is_onsite {
         " | 📍 Onsite"
     } else {
         ""
     };
 
-    let social_badge = if event.social_links.is_empty() {
-        String::new()
+    let socials = if event.social_links.is_empty() {
+        "".to_string()
     } else {
         let icons: Vec<&str> = event
             .social_links
             .iter()
             .map(|l| platform_icon(&l.platform))
             .collect();
-        format!("\n🔗 {}", icons.join("  "))
+        format!(" | {}", icons.join(""))
     };
 
-    // Show a short preview of the description (first 120 chars, no newlines).
-    let desc_preview = event
-        .description
-        .as_deref()
-        .map(|d| d.split_whitespace().collect::<Vec<_>>().join(" "))
-        .filter(|d| !d.is_empty())
-        .map(|d| truncate(&d, 120))
-        .map(|d| format!("\n> {}", d))
-        .unwrap_or_default();
+    let format = event.format.as_deref().unwrap_or("unknown");
 
     format!(
-        "{index}. **{title}**\n{url}\nTime: {local_start} → {local_end}\n{format_tag}{weight_tag}{onsite_tag}{social_badge}{desc_preview}",
-        title = event.title,
-        url = event.url,
+        "{index}. **{title}**\n🕒 {local_start} → {local_end}\n🎯 {format}{weight}{onsite}{socials}"
     )
 }
 

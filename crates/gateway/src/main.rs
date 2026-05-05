@@ -34,6 +34,9 @@ use util::{parse_id, parse_u16_env};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
     dotenvy::dotenv().ok();
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
