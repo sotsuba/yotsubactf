@@ -20,13 +20,39 @@ groups:
           description: "Scheduler on {{ $labels.instance }} has been down for more than 2 minutes."
 
       - alert: HighCommandErrorRate
-        expr: sum(rate(gateway_commands_total{result="error"}[5m])) / sum(rate(gateway_commands_total[5m])) > 0.1
+        expr: >
+          sum(rate(gateway_commands_total{success="false"}[5m]))
+          /
+          sum(rate(gateway_commands_total[5m]))
+          > 0.1
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High command error rate"
-          description: "Over 10% of commands in the last 5 minutes resulted in errors."
+          description: "{{ $value | humanizePercentage }} of commands are failing."
+
+      - alert: SchedulerTaskFailing
+        expr: >
+          sum(rate(scheduler_tasks_total{result="error"}[15m])) by (task)
+          /
+          sum(rate(scheduler_tasks_total[15m])) by (task)
+          > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scheduler task {{ $labels.task }} failing"
+          description: "Over 50% of {{ $labels.task }} runs are erroring."
+
+      - alert: ReminderBacklogBuilding
+        expr: scheduler_reminders_pending_count > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reminder backlog is growing"
+          description: "{{ $value }} reminders pending — scheduler may be lagging."
 
       - alert: CTFTimeApiHighLatency
         expr: histogram_quantile(0.9, sum(rate(ctftime_api_latency_seconds_bucket[5m])) by (le, endpoint)) > 10
