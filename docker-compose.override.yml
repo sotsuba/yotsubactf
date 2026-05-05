@@ -4,6 +4,10 @@ services:
   postgres:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctfbot}
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -64,7 +68,8 @@ services:
     environment:
       - ENV=dev
     volumes:
-      - ./monitoring/alertmanager:/etc/alertmanager:ro
+      - ./monitoring/alertmanager:/config:ro
+
     ports:
       - "9093:9093"
     networks:
@@ -113,6 +118,10 @@ services:
     image: prometheuscommunity/postgres-exporter:latest
     environment:
       DATA_SOURCE_NAME: "postgresql://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot?sslmode=disable"
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
     networks:
       - backend
 
