@@ -157,7 +157,9 @@ fn build_paged_response(
                     custom_id: Some(format!("event:upcoming:join:{}", e.ctftime_id)),
                     disabled: e.social_links.is_empty(),
                     emoji: None,
+                    id: None,
                     label: Some(format!("#{} {}", global_n, title_trunc)),
+                    sku_id: None,
                     style: if !e.social_links.is_empty() {
                         ButtonStyle::Primary
                     } else {
@@ -171,6 +173,7 @@ fn build_paged_response(
         for chunk in join_buttons.chunks(5) {
             extra_rows.push(Component::ActionRow(ActionRow {
                 components: chunk.to_vec(),
+                id: None,
             }));
         }
     }
