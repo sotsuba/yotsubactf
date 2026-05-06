@@ -119,10 +119,15 @@ This allows you to test changes on a development bot before applying them to you
 
 ## Monitoring
 
-Once running, you can access the monitoring stack:
+By default, the monitoring stack is **disabled** to keep the footprint minimal. To opt-in and start the observability stack (Prometheus, Grafana, Alertmanager, etc.):
 
-- **Prometheus**: [http://localhost:9090](http://localhost:9090)
+```bash
+docker compose --profile monitoring up -d
+```
+
+Once running, you can access the dashboard:
 - **Grafana**: [http://localhost:3030](http://localhost:3030) (Default login: `admin` / `admin`)
+- **Prometheus**: [http://localhost:9090](http://localhost:9090)
 
 Dashboards for the Gateway and Scheduler are pre-provisioned in Grafana.
 

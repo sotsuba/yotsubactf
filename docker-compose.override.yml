@@ -32,6 +32,7 @@ services:
 
   # Monitoring (Dev-only specific settings)
   prometheus:
+    profiles: ["monitoring"]
     image: prom/prometheus:v3.1.0
     command:
       - '--config.file=/etc/prometheus/prometheus.dev.yml'
@@ -45,6 +46,7 @@ services:
       - backend
 
   grafana:
+    profiles: ["monitoring"]
     image: grafana/grafana:11.4.0
     environment:
       GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
@@ -58,6 +60,7 @@ services:
       - monitoring
 
   alertmanager:
+    profiles: ["monitoring"]
     build:
       context: ./monitoring/alertmanager
       dockerfile: Dockerfile
@@ -73,6 +76,7 @@ services:
       - monitoring
 
   loki:
+    profiles: ["monitoring"]
     image: grafana/loki:3.3.2
     volumes:
       - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
@@ -82,6 +86,7 @@ services:
       - monitoring
 
   promtail:
+    profiles: ["monitoring"]
     image: grafana/promtail:3.3.2
     volumes:
       - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
@@ -92,6 +97,7 @@ services:
       - monitoring
 
   node-exporter:
+    profiles: ["monitoring"]
     image: quay.io/prometheus/node-exporter:latest
     command:
       - '--path.procfs=/host/proc'
@@ -105,6 +111,7 @@ services:
       - backend
 
   redis-exporter:
+    profiles: ["monitoring"]
     image: oliver006/redis_exporter:latest
     environment:
       - REDIS_ADDR=redis:6379
@@ -112,6 +119,7 @@ services:
       - backend
 
   postgres-exporter:
+    profiles: ["monitoring"]
     image: prometheuscommunity/postgres-exporter:latest
     environment:
       DATA_SOURCE_NAME: "postgresql://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot?sslmode=disable"
