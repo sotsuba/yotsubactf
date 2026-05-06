@@ -1,5 +1,5 @@
 use html_scraper::{ElementRef, Html, Selector};
-use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware as Client;
 use shared::TeamResult;
 use shared::{CtfError, CtfResult};
 use std::sync::OnceLock;

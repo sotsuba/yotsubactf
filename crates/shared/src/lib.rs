@@ -7,6 +7,7 @@ pub mod testing;
 
 pub mod constants;
 pub mod metrics;
+pub mod resilience;
 pub mod util;
 
 pub use contracts::{
