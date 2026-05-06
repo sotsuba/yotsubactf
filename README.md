@@ -1,36 +1,61 @@
 # YotsubaCTF Discord Bot
 
-A robust, observable Discord bot for CTF teams, built with Rust.
 
 [![CI](https://github.com/sotsuba/yotsubactf/actions/workflows/ci.yml/badge.svg)](https://github.com/sotsuba/yotsubactf/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.95-orange.svg)](https://www.rust-lang.org)
+> My imaginary friend hate to open CTFTime to see things 💔. I also cannot open it everyday.
+>
+> So I force Yotsuba do this tasks for us. 🍀
 
-## Features
 
-- **Event Tracking**: Automatically scrapes upcoming CTFs and notifies channels.
-- **Team Tracking**: Follow your team's performance and get notified of new results.
-- **Reminders**: Configurable reminders for upcoming events (DM and Channel).
-- **Writeup Search**: Find writeups for past CTFs directly from Discord.
-- **Observability**: Built-in Prometheus metrics and Grafana dashboards.
-- **Resilience**: Retries with exponential backoff for CTFtime API calls.
+Here's the Yotsuba if you don't know who she is. She is from the manga **Yotsuba&!** (read it, it's very fun).
+
+![Yotsuba](docs/assets/yotsuba.jpg)
+
+
+## What It Does
+
+### Core CTF Ops
+- Browse CTFTime events (upcoming/current/completed), plus countdown and info lookups
+- Subscribe a server to event notifications with clean Discord embeds
+- Send a weekly CTF digest to a chosen channel
+- Search and browse writeups by keyword, event, category, or followed team
+- Follow a CTFTime team and post new results
+- Set reminders for events, timers, or recurring intervals
+
+### Optional Utilities
+- Cipher/encoding tools and hash calculators
+- Admin role mapping for command access control
 
 ## Screenshots
 
 ### Event Commands
+#### Upcoming events
 ![Upcoming events command](docs/assets/event_upcoming_preview.png)
+#### Next steps for an event
+![Next steps command](docs/assets/event_upcoming_next_step.png)
+
+### How updates are announced
+Events and writeups are posted as separate notifications.
+
+#### Events
+![Event notification](docs/assets/how_events_are_notified.png)
+
+#### Writeups
+![Writeup notification](docs/assets/how_writeups_are_notified.png)
 
 ### Grafana Dashboard
 ![Grafana monitoring](docs/assets/grafana_preview.png)
 
 ## Tech Stack
 
-- **Language**: Rust (2024 edition)
-- **Database**: PostgreSQL (SQLx)
-- **Caching**: Redis & Moka (In-memory)
-- **Discord API**: Twilight
-- **Monitoring**: Prometheus & Grafana
-- **Deployment**: Docker Compose
+| Area | Tools |
+| --- | --- |
+| Core | Rust (2024 edition), Twilight |
+| Data | PostgreSQL (SQLx), Redis, Moka |
+| Observability | Prometheus, Grafana, Loki, Alertmanager, Promtail |
+| Ops | Docker Compose |
 
 ## Getting Started
 
@@ -40,105 +65,61 @@ A robust, observable Discord bot for CTF teams, built with Rust.
 - [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/install/)
 - A Discord Bot Token (from [Discord Developer Portal](https://discord.com/developers/applications))
 
-### Installation
+### Quick Start
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/sotsuba/ctftime-discord-bot.git
-    cd ctftime-discord-bot
-    ```
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/sotsuba/yotsubactf.git
+   cd yotsubactf
+   ```
 
-2.  **Configure environment**:
-    ```bash
-    cp .env.example .env
-    # Edit .env and fill in DISCORD_TOKEN and DISCORD_APPLICATION_ID
-    ```
+2. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env and fill in DISCORD_TOKEN and DISCORD_APPLICATION_ID
+   ```
 
-3.  **Start the services**:
-    ```bash
-    docker compose up -d
-    ```
+3. **Start the services**:
+   ```bash
+   docker compose up -d
+   ```
 
-### Development
+## Development, CI/CD, and Deployment
 
-- **Run migrations**: `sqlx migrate run`
-- **Run the gateway**: `cargo run -p gateway`
-- **Run the scheduler**: `cargo run -p scheduler`
-- **Run tests**: `cargo test`
+Useful files:
+- [CONTRIBUTING.md](CONTRIBUTING.md): Local dev workflow, git hooks, and SQLx offline data steps
+- [docs/api-endpoints.md](docs/api-endpoints.md): API endpoints
+- [docs/slash-commands.md](docs/slash-commands.md): Slash commands
 
-## CI/CD & Git Hooks
+Use Docker Compose for local or private hosting.
 
-This project uses Git hooks to ensure code quality and conventional commits.
-
-### Setup Git Hooks
-
-Run the following command once after cloning the repository:
-
-```bash
-make hooks
-```
-
-This will enable:
-- `pre-commit`: Runs `fmt`, `clippy`, and unit tests.
-- `commit-msg`: Enforces [Conventional Commits](https://www.conventionalcommits.org/).
-- `pre-push`: Runs full workspace checks and SQLx offline data validation.
-
-### SQLx Offline Data
-
-To build the Docker image without a live database, we use SQLx offline mode. If you modify any SQL queries, you must regenerate the offline data:
-
-```bash
-make prepare
-```
-
-Then commit the changes in the `.sqlx/` directory.
-
-## Deployment
-
-For local development and private hosting, use Docker Compose. You can run isolated Staging and Production environments on your local machine using separate compose files.
-
-### 1. Standard Local Dev
+### Standard Local Dev
 ```bash
 docker compose up -d
 ```
 
-### 2. Multi-Environment (Local)
+### Production (Local)
 
-This allows you to test changes on a development bot before applying them to your primary bot.
-
-- **Staging**: `docker compose -f docker-compose.staging.yml --env-file .env.staging up -d`
-    - Ports: Gateway (8185), Scheduler (8186)
 - **Production**: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d`
-    - Ports: Gateway (8085), Scheduler (8086)
 
-### Setup Instructions
-1.  **Configure environment files**:
-    Create `.env.staging` and `.env.prod` by copying `.env.example` and filling in the respective bot tokens and application IDs.
-2.  **Run migrations**:
-    The bots automatically run migrations on startup within their isolated databases.
+### Setup Notes
+1. **Configure environment files**: copy `.env.example` to `.env.prod`
+2. **Migrations**: run on startup inside each environment
 
-## Monitoring
+### Monitoring
 
-By default, the monitoring stack is **disabled** to keep the footprint minimal. To opt-in and start the observability stack (Prometheus, Grafana, Alertmanager, etc.):
+Monitoring is off by default. Enable the full stack (Prometheus, Grafana, Loki, Alertmanager, Promtail):
 
 ```bash
 docker compose --profile monitoring up -d
 ```
 
-Once running, you can access the dashboard:
+Dashboards:
 - **Grafana**: [http://localhost:3030](http://localhost:3030) (Default login: `admin` / `admin`)
 - **Prometheus**: [http://localhost:9090](http://localhost:9090)
 
-Dashboards for the Gateway and Scheduler are pre-provisioned in Grafana.
-
-## Project Structure
-
-- `crates/gateway`: The Discord bot process (slash commands, events).
-- `crates/scheduler`: Background tasks (scraping, results, reminders).
-- `crates/db`: Shared PostgreSQL repository implementations.
-- `crates/shared`: Common models, traits, and utilities.
-- `monitoring/`: Configuration for Prometheus and Grafana.
+Gateway and Scheduler dashboards are pre-provisioned in Grafana.
 
 ## License
 
-MIT
+MIT @ sotsuba

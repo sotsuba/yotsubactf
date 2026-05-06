@@ -25,11 +25,25 @@ impl SlashCommand for HelpCommand {
 pub fn handle() -> InteractionResponse {
     let embed = CtfEmbed::new("YotsubaCTF — Commands")
         .description(
-            "**`/ping`** — Check bot responsiveness\n\
-             **`/upcoming [count]`** — List the next scheduled CTFs (max 20)\n\
-             **`/subscribe channel:#channel`** — Subscribe this server to CTF notifications\n\
-             **`/unsubscribe`** — Stop receiving CTF notifications\n\
-               **`/adminrole`** — Manage admin role mappings\n\
+            "### 🏁 CTF Operations\n\
+             **`/event upcoming`** — List upcoming CTFs\n\
+             **`/event current`** — List ongoing CTFs\n\
+             **`/event completed`** — Browse past results\n\
+             **`/writeups`** — Search and browse CTF writeups\n\
+             **`/team follow`** — Get notified of new team results\n\
+             **`/leaderboard`** — Check top teams on CTFTime\n\n\
+             ### ⏰ Reminders\n\
+             **`/reminder set`** — Set a reminder for an event or timer\n\
+             **`/reminder list`** — View and manage your active reminders\n\n\
+             ### 🛠️ Utilities\n\
+             **`/cipher`** — Cipher tools (ROT13, Base64, etc.)\n\
+             **`/hash`** — Calculate common hash values\n\
+             **`/ping`** — Check bot responsiveness\n\n\
+             ### ⚙️ Administration\n\
+             **`/subscribe`** — Configure notification channels\n\
+             **`/unsubscribe`** — Stop notifications\n\
+             **`/digest`** — Configure weekly CTF digests\n\
+             **`/adminrole`** — Manage admin role mappings\n\n\
              **`/help`** — Show this message",
         )
         .now()
