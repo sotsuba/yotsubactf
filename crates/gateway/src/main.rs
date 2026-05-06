@@ -109,8 +109,7 @@ async fn main() -> Result<()> {
             redis_client.clone(),
         )) as Arc<dyn ReadCtfRepository>,
         Arc::new(PostgresGuildRepository::new(pool.clone())) as Arc<dyn GuildRepository>,
-        Arc::new(PostgresAdminRoleRepository::new(pool.clone()))
-            as Arc<dyn AdminRoleRepository>,
+        Arc::new(PostgresAdminRoleRepository::new(pool.clone())) as Arc<dyn AdminRoleRepository>,
         Arc::new(PostgresReminderRepository::new(pool.clone())) as Arc<dyn ReminderRepository>,
         Arc::new(PostgresTeamRepository::new(pool.clone())) as Arc<dyn TeamRepository>,
         Arc::new(PostgresWriteupRepository::new(pool.clone(), redis_client))

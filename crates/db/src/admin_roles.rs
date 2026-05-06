@@ -23,9 +23,8 @@ impl PostgresAdminRoleRepository {
 }
 
 fn parse_role(role: &str) -> Result<AdminRole> {
-    role.parse::<AdminRole>().map_err(|_| {
-        CtfError::Database(format!("Invalid admin role value in database: {role}"))
-    })
+    role.parse::<AdminRole>()
+        .map_err(|_| CtfError::Database(format!("Invalid admin role value in database: {role}")))
 }
 
 #[async_trait]
@@ -76,14 +75,13 @@ impl AdminRoleRepository for PostgresAdminRoleRepository {
     }
 
     async fn delete_admin_role(&self, guild_id: &str, role_id: &str) -> Result<bool> {
-        let result = sqlx::query(
-            r#"DELETE FROM guild_admin_roles WHERE guild_id = $1 AND role_id = $2"#,
-        )
-        .bind(guild_id)
-        .bind(role_id)
-        .execute(&self.pool)
-        .await
-        .map_err(crate::db_err)?;
+        let result =
+            sqlx::query(r#"DELETE FROM guild_admin_roles WHERE guild_id = $1 AND role_id = $2"#)
+                .bind(guild_id)
+                .bind(role_id)
+                .execute(&self.pool)
+                .await
+                .map_err(crate::db_err)?;
 
         Ok(result.rows_affected() > 0)
     }

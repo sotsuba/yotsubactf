@@ -676,7 +676,9 @@ impl AdminRoleRepository for InMemoryAdminRoleRepository {
 
     async fn delete_admin_role(&self, guild_id: &str, role_id: &str) -> Result<bool> {
         let mut roles = self.roles.write().await;
-        Ok(roles.remove(&(guild_id.to_string(), role_id.to_string())).is_some())
+        Ok(roles
+            .remove(&(guild_id.to_string(), role_id.to_string()))
+            .is_some())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

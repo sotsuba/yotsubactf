@@ -88,10 +88,7 @@ pub async fn handle(
             repo.upsert_admin_role(guild_id, &role_id, level).await?;
 
             let embed = CtfEmbed::success("Admin role added")
-                .description(format!(
-                    "Mapped <@&{role_id}> to **{}**.",
-                    level.as_str()
-                ))
+                .description(format!("Mapped <@&{role_id}> to **{}**.", level.as_str()))
                 .build();
 
             Ok(ephemeral_embed(embed))
@@ -145,22 +142,20 @@ pub async fn handle(
 fn extract_role_id(subcmd: &CommandDataOption) -> CtfResult<String> {
     if let CommandOptionValue::SubCommand(ref opts) = subcmd.value {
         for opt in opts {
-            if opt.name == "role_id" {
-                if let CommandOptionValue::String(ref val) = opt.value {
-                    if val.parse::<u64>().is_err() {
-                        return Err(CtfError::InvalidInput(
-                            "Role ID must be a valid snowflake.".to_string(),
-                        ));
-                    }
-                    return Ok(val.to_string());
+            if opt.name == "role_id"
+                && let CommandOptionValue::String(ref val) = opt.value
+            {
+                if val.parse::<u64>().is_err() {
+                    return Err(CtfError::InvalidInput(
+                        "Role ID must be a valid snowflake.".to_string(),
+                    ));
                 }
+                return Ok(val.to_string());
             }
         }
     }
 
-    Err(CtfError::InvalidInput(
-        "Role ID is required.".to_string(),
-    ))
+    Err(CtfError::InvalidInput("Role ID is required.".to_string()))
 }
 
 fn extract_role_and_level(subcmd: &CommandDataOption) -> CtfResult<(String, AdminRole)> {
@@ -195,12 +190,10 @@ fn extract_role_and_level(subcmd: &CommandDataOption) -> CtfResult<(String, Admi
         }
     }
 
-    let role_id = role_id.ok_or_else(|| {
-        CtfError::InvalidInput("Role ID is required.".to_string())
-    })?;
-    let level = level.ok_or_else(|| {
-        CtfError::InvalidInput("Admin level is required.".to_string())
-    })?;
+    let role_id =
+        role_id.ok_or_else(|| CtfError::InvalidInput("Role ID is required.".to_string()))?;
+    let level =
+        level.ok_or_else(|| CtfError::InvalidInput("Admin level is required.".to_string()))?;
 
     Ok((role_id, level))
 }

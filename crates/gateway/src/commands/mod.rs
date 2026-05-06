@@ -1,10 +1,10 @@
+pub mod admin_roles;
 pub mod cipher;
 pub mod digest;
 pub mod event;
 pub mod hash;
 pub mod help;
 pub mod leaderboard;
-pub mod admin_roles;
 pub mod ping;
 pub mod reminder;
 pub mod subscribe;
