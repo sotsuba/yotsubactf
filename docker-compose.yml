@@ -1,0 +1,75 @@
+# docker-compose.base.yml
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ctfbot
+      POSTGRES_DB: ctfbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctfbot}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctfbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+    networks:
+      - backend
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot
+      REDIS_URL: redis://redis:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      HEALTH_PORT: 8085
+    networks:
+      backend:
+        aliases:
+          - scheduler
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot
+      REDIS_URL: redis://redis:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      HEALTH_PORT: 8085
+    networks:
+      backend:
+        aliases:
+          - gateway
+
+networks:
+  backend:
+  monitoring:
+
+volumes:
+  pgdata:
+  redisdata:
