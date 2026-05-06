@@ -26,23 +26,37 @@ pub async fn request_with_retry(
         )
         .record(duration.as_secs_f64());
 
-        let resp = resp_result.map_err(|e| {
-            metrics::counter!(
-                shared::metrics::CTFTIME_API_REQUESTS_TOTAL,
-                "endpoint" => endpoint,
-                "status"   => "error"
-            )
-            .increment(1);
+        let resp = match resp_result {
+            Ok(resp) => resp,
+            Err(err) => {
+                let status_label = if err.is_timeout() { "timeout" } else { "error" };
+                metrics::counter!(
+                    shared::metrics::CTFTIME_API_REQUESTS_TOTAL,
+                    "endpoint" => endpoint,
+                    "status"   => status_label
+                )
+                .increment(1);
 
-            if e.is_timeout() {
-                CtfError::Timeout
-            } else {
-                CtfError::ExternalApi {
-                    status: 0,
-                    message: format!("Request failed: {e}"),
+                let ctf_err = if err.is_timeout() {
+                    CtfError::Timeout
+                } else {
+                    CtfError::ExternalApi {
+                        status: 0,
+                        message: format!("Request failed: {err}"),
+                    }
+                };
+
+                if ctf_err.is_transient() && retries < max_retries {
+                    warn!(%url, ?backoff, "CTFtime request failed, retrying...");
+                    tokio::time::sleep(backoff).await;
+                    retries += 1;
+                    backoff *= 2;
+                    continue;
                 }
+
+                return Err(ctf_err);
             }
-        })?;
+        };
 
         let status = resp.status();
         metrics::counter!(
