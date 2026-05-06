@@ -5,7 +5,7 @@ groups:
   - name: ctfbot.gateway
     rules:
       - alert: HighCommandErrorRate
-        expr: (sum(rate(gateway_commands_total{result="error"}[5m])) / sum(rate(gateway_commands_total[5m]))) > 0.10 and sum(rate(gateway_commands_total[5m])) > 0
+        expr: (sum(rate(gateway_commands_total{success="false"}[5m])) / sum(rate(gateway_commands_total[5m]))) > 0.10 and sum(rate(gateway_commands_total[5m])) > 0
         for: 5m
         labels:
           severity: warning

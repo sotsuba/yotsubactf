@@ -14,6 +14,7 @@
 //!   REMIND_INTERVAL_SECS    default 60    (1 minute)
 //!   ENRICH_INTERVAL_SECS    default 30    (30 seconds)
 //!   NOTIFY_INTERVAL_SECS    default 10    (10 seconds)
+//!   ENRICH_CONCURRENCY      default 5     (max 50)
 //!   RUST_LOG                default "info"
 
 use anyhow::{Context, Result};

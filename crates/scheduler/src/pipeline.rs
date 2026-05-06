@@ -39,7 +39,16 @@ use shared::{CtfEventRepository, GuildRepository, Notifier, UpsertStatus};
 
 use crate::ctftime::{api, html, models::EnrichedEvent};
 
-const MAX_CONCURRENT_ENRICHMENT: usize = 5;
+const DEFAULT_ENRICH_CONCURRENCY: usize = 5;
+const MAX_ENRICH_CONCURRENCY: usize = 50;
+
+fn enrich_concurrency() -> usize {
+    let parsed = std::env::var("ENRICH_CONCURRENCY")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(DEFAULT_ENRICH_CONCURRENCY);
+    parsed.clamp(1, MAX_ENRICH_CONCURRENCY)
+}
 
 // ── Public entry points ───────────────────────────────────────────────────────
 
@@ -64,7 +73,7 @@ pub async fn run_once(
     info!(count = raw_events.len(), "Fetched events from CTFTime API");
 
     // 2. Enrich all events concurrently.
-    let sem = Arc::new(Semaphore::new(MAX_CONCURRENT_ENRICHMENT));
+    let sem = Arc::new(Semaphore::new(enrich_concurrency()));
     let mut join_set: JoinSet<EnrichedEvent> = JoinSet::new();
 
     for raw in raw_events {

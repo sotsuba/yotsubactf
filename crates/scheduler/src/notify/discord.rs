@@ -50,19 +50,40 @@ impl DiscordNotifier {
     ) -> Result<reqwest::Response> {
         let mut retries = 0;
         let max_retries = 3;
+        let mut backoff = std::time::Duration::from_secs(2);
 
         loop {
-            let resp = self
+            let resp_result = self
                 .client
                 .request(method.clone(), url)
                 .header("Authorization", &self.auth_header)
                 .json(&body)
                 .send()
-                .await
-                .map_err(|e| CtfError::ExternalApi {
-                    status: 0,
-                    message: format!("HTTP request to Discord failed: {e}"),
-                })?;
+                .await;
+
+            let resp = match resp_result {
+                Ok(resp) => resp,
+                Err(err) => {
+                    let ctf_err = if err.is_timeout() {
+                        CtfError::Timeout
+                    } else {
+                        CtfError::ExternalApi {
+                            status: 0,
+                            message: format!("HTTP request to Discord failed: {err}"),
+                        }
+                    };
+
+                    if ctf_err.is_transient() && retries < max_retries {
+                        warn!(%url, ?backoff, "Discord request failed, retrying...");
+                        tokio::time::sleep(backoff).await;
+                        retries += 1;
+                        backoff *= 2;
+                        continue;
+                    }
+
+                    return Err(ctf_err);
+                }
+            };
 
             let status = resp.status();
             if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
@@ -86,6 +107,13 @@ impl DiscordNotifier {
                 warn!(%url, retry_after, "Discord rate-limit hit (429), backing off");
                 tokio::time::sleep(delay).await;
                 retries += 1;
+                continue;
+            }
+            if status.is_server_error() && retries < max_retries {
+                warn!(%url, ?status, ?backoff, "Discord server error, retrying...");
+                tokio::time::sleep(backoff).await;
+                retries += 1;
+                backoff *= 2;
                 continue;
             }
             if !status.is_success() {
