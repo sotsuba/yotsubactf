@@ -45,6 +45,12 @@ Events and writeups are posted as separate notifications.
 #### Writeups
 ![Writeup notification](docs/assets/how_writeups_are_notified.png)
 
+### How it alerts
+
+Plug in a Discord webhook and let your server scream at you the moment your bot (or anything else) gets nuked.
+
+![Alert](docs/assets/how_it_alerts.png)
+
 ### Grafana Dashboard
 ![Grafana monitoring](docs/assets/grafana_preview.png)
 
