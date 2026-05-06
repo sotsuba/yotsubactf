@@ -5,7 +5,7 @@ pub const COLOR_BRAND: u32 = 0x2F_6F_ED;
 pub const COLOR_SUCCESS: u32 = 0x2E_CC_71;
 pub const COLOR_WARNING: u32 = 0xE6_7E_22;
 pub const COLOR_ERROR: u32 = 0xE7_4C_3C;
-pub const FOOTER_TEXT: &str = "CTF Bot";
+pub const FOOTER_TEXT: &str = "YotsubaCTF";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct EmbedData {

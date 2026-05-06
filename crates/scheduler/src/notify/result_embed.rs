@@ -6,7 +6,7 @@ pub fn build_result_notification(result: &TeamResult, event_title: &str, team_na
     let mut embed = CtfEmbed::new(format!("🏆 New Result for {}", team_name))
         .description(format!("**{}** result is out!", event_title))
         .color(0xF1C40F) // Gold-ish
-        .footer("CTF Bot • results")
+        .footer("YotsubaCTF • results")
         .timestamp(Utc::now())
         .field("Team", team_name, true)
         .field("Event", event_title, true);

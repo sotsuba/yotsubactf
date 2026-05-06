@@ -22,14 +22,15 @@ impl WriteupRepository for PostgresWriteupRepository {
         let row = sqlx::query!(
             r#"
             INSERT INTO writeups (
-                id, ctftime_id, title, url, event_id, 
+                id, ctftime_id, title, url, summary, event_id, 
                 category, event_name, published_at, created_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (ctftime_id) DO UPDATE SET
                 title = EXCLUDED.title,
                 url = EXCLUDED.url,
                 event_id = CASE WHEN writeups.event_id = 0 THEN EXCLUDED.event_id ELSE writeups.event_id END,
+                summary = COALESCE(writeups.summary, EXCLUDED.summary),
                 category = EXCLUDED.category,
                 event_name = EXCLUDED.event_name,
                 published_at = EXCLUDED.published_at
@@ -39,6 +40,7 @@ impl WriteupRepository for PostgresWriteupRepository {
             writeup.ctftime_id,
             writeup.title,
             writeup.url,
+            writeup.summary,
             writeup.event_id,
             writeup.category,
             writeup.event_name,
@@ -101,8 +103,9 @@ impl WriteupRepository for PostgresWriteupRepository {
             Writeup,
             r#"
             SELECT 
-                id, ctftime_id, title, url, event_id, 
-                category, event_name, published_at, created_at as "created_at!"
+                id, ctftime_id, title, url, summary, event_id, 
+                category, event_name, published_at, created_at as "created_at!",
+                enriched_at, notified_at
             FROM writeups
             WHERE event_id = $1
             ORDER BY published_at DESC NULLS LAST, created_at DESC
@@ -121,8 +124,9 @@ impl WriteupRepository for PostgresWriteupRepository {
             Writeup,
             r#"
             SELECT 
-                id, ctftime_id, title, url, event_id, 
-                category, event_name, published_at, created_at as "created_at!"
+                id, ctftime_id, title, url, summary, event_id, 
+                category, event_name, published_at, created_at as "created_at!",
+                enriched_at, notified_at
             FROM writeups
             WHERE notified_at IS NULL
             ORDER BY created_at ASC
@@ -143,6 +147,18 @@ impl WriteupRepository for PostgresWriteupRepository {
         Ok(())
     }
 
+    async fn update_writeup_summary(&self, ctftime_id: i64, summary: &str) -> Result<()> {
+        sqlx::query!(
+            "UPDATE writeups SET summary = $1 WHERE ctftime_id = $2 AND (summary IS NULL OR summary = '')",
+            summary,
+            ctftime_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
+        Ok(())
+    }
+
     async fn search_writeups(
         &self,
         query: &str,
@@ -156,8 +172,9 @@ impl WriteupRepository for PostgresWriteupRepository {
                     Writeup,
                     r#"
                     SELECT 
-                        id, ctftime_id, title, url, event_id, 
-                        category, event_name, published_at, created_at as "created_at!"
+                        id, ctftime_id, title, url, summary, event_id, 
+                        category, event_name, published_at, created_at as "created_at!",
+                        enriched_at, notified_at
                     FROM writeups
                     WHERE category = $1
                     ORDER BY published_at DESC NULLS LAST, created_at DESC
@@ -194,9 +211,10 @@ impl WriteupRepository for PostgresWriteupRepository {
         let rows = sqlx::query!(
             r#"
             SELECT
-                id, ctftime_id, title, url, event_id,
+                id, ctftime_id, title, url, summary, event_id,
                 category, event_name, published_at,
                 created_at as "created_at!",
+                enriched_at, notified_at,
                 ts_rank(search_vector, plainto_tsquery('english', $1)) as "rank!"
             FROM writeups
             WHERE
@@ -224,11 +242,14 @@ impl WriteupRepository for PostgresWriteupRepository {
                     ctftime_id: r.ctftime_id,
                     title: r.title,
                     url: r.url,
+                    summary: r.summary,
                     event_id: r.event_id,
                     category: r.category,
                     event_name: r.event_name,
                     published_at: r.published_at,
                     created_at: r.created_at,
+                    enriched_at: r.enriched_at,
+                    notified_at: r.notified_at,
                 },
             })
             .collect())
@@ -257,8 +278,9 @@ impl WriteupRepository for PostgresWriteupRepository {
             Writeup,
             r#"
             SELECT 
-                id, ctftime_id, title, url, event_id, 
-                category, event_name, published_at, created_at as "created_at!"
+                id, ctftime_id, title, url, summary, event_id, 
+                category, event_name, published_at, created_at as "created_at!",
+                enriched_at, notified_at
             FROM writeups
             ORDER BY published_at DESC NULLS LAST, created_at DESC
             LIMIT $1
@@ -300,8 +322,9 @@ impl WriteupRepository for PostgresWriteupRepository {
             Writeup,
             r#"
             SELECT 
-                id, ctftime_id, title, url, event_id, 
-                category, event_name, published_at, created_at as "created_at!"
+                id, ctftime_id, title, url, summary, event_id, 
+                category, event_name, published_at, created_at as "created_at!",
+                enriched_at, notified_at
             FROM writeups
             WHERE event_name ILIKE $1 OR title ILIKE $1
             ORDER BY published_at DESC NULLS LAST, created_at DESC
@@ -329,8 +352,9 @@ impl WriteupRepository for PostgresWriteupRepository {
             Writeup,
             r#"
             SELECT 
-                id, ctftime_id, title, url, event_id, 
-                category, event_name, published_at, created_at as "created_at!"
+                id, ctftime_id, title, url, summary, event_id, 
+                category, event_name, published_at, created_at as "created_at!",
+                enriched_at, notified_at
             FROM writeups
             WHERE event_id = ANY($1::bigint[])
             ORDER BY published_at DESC NULLS LAST, created_at DESC
@@ -376,8 +400,9 @@ impl WriteupRepository for PostgresWriteupRepository {
             Writeup,
             r#"
             SELECT DISTINCT ON (category)
-                id, ctftime_id, title, url, event_id, 
-                category, event_name, published_at, created_at as "created_at!"
+                id, ctftime_id, title, url, summary, event_id, 
+                category, event_name, published_at, created_at as "created_at!",
+                enriched_at, notified_at
             FROM writeups
             WHERE published_at >= $1 OR (published_at IS NULL AND created_at >= $1)
             ORDER BY category, published_at DESC NULLS LAST
@@ -391,6 +416,45 @@ impl WriteupRepository for PostgresWriteupRepository {
         .map_err(crate::db_err)?;
 
         Ok(rows)
+    }
+
+    async fn list_unenriched_writeups(&self, limit: i64) -> Result<Vec<Writeup>> {
+        let rows = sqlx::query_as!(
+            Writeup,
+            r#"
+            SELECT id, ctftime_id, title, url, summary, event_id,
+                   category, event_name, published_at, created_at as "created_at!",
+                   enriched_at, notified_at
+            FROM writeups
+            WHERE enriched_at IS NULL
+            ORDER BY created_at ASC
+            LIMIT $1
+            "#,
+            limit
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
+
+        Ok(rows)
+    }
+
+    async fn mark_writeup_enriched(
+        &self,
+        id: Uuid,
+        summary: &str,
+        category: Option<&str>,
+    ) -> Result<()> {
+        sqlx::query!(
+            "UPDATE writeups SET summary = $1, category = COALESCE($2, category), enriched_at = NOW() WHERE id = $3",
+            summary,
+            category,
+            id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
+        Ok(())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

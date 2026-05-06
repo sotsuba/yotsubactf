@@ -1,0 +1,6 @@
+# monitoring/alertmanager/alertmanager.dev.yml
+route:
+  receiver: 'blackhole'
+
+receivers:
+  - name: 'blackhole'

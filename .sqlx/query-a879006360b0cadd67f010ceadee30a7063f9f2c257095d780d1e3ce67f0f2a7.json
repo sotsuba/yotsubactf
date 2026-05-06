@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                id, ctftime_id, title, url, event_id, \n                category, event_name, published_at, created_at as \"created_at!\"\n            FROM writeups\n            WHERE event_id = ANY($1::bigint[])\n            ORDER BY published_at DESC NULLS LAST, created_at DESC\n            LIMIT $2\n            OFFSET $3\n            ",
+  "query": "\n                    SELECT \n                        id, ctftime_id, title, url, summary, event_id, \n                        category, event_name, published_at, created_at as \"created_at!\",\n                        enriched_at, notified_at\n                    FROM writeups\n                    WHERE category = $1\n                    ORDER BY published_at DESC NULLS LAST, created_at DESC\n                    LIMIT $2\n                    OFFSET $3\n                    ",
   "describe": {
     "columns": [
       {
@@ -25,33 +25,48 @@
       },
       {
         "ordinal": 4,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "event_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "category",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "event_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "published_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "enriched_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "notified_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8Array",
+        "Text",
         "Int8",
         "Int8"
       ]
@@ -61,12 +76,15 @@
       false,
       false,
       false,
+      true,
       false,
+      true,
+      true,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "d6bf392a7290618a656d32d5bed8faf43176bd6f3c4a82da07325cc4a6fe25c8"
+  "hash": "a879006360b0cadd67f010ceadee30a7063f9f2c257095d780d1e3ce67f0f2a7"
 }

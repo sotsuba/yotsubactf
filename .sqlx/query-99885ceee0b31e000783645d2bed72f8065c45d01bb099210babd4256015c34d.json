@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id, ctftime_id, title, url, event_id,\n                category, event_name, published_at,\n                created_at as \"created_at!\",\n                ts_rank(search_vector, plainto_tsquery('english', $1)) as \"rank!\"\n            FROM writeups\n            WHERE\n                search_vector @@ plainto_tsquery('english', $1)\n                AND ($2::text IS NULL OR category = $2)\n            ORDER BY \"rank!\" DESC, published_at DESC NULLS LAST\n            LIMIT $3\n            OFFSET $4\n            ",
+  "query": "\n            SELECT \n                id, ctftime_id, title, url, summary, event_id, \n                category, event_name, published_at, created_at as \"created_at!\",\n                enriched_at, notified_at\n            FROM writeups\n            ORDER BY published_at DESC NULLS LAST, created_at DESC\n            LIMIT $1\n            OFFSET $2\n            ",
   "describe": {
     "columns": [
       {
@@ -25,39 +25,47 @@
       },
       {
         "ordinal": 4,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "event_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "category",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "event_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "published_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
-        "name": "rank!",
-        "type_info": "Float4"
+        "ordinal": 10,
+        "name": "enriched_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "notified_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
         "Int8",
         "Int8"
       ]
@@ -67,13 +75,15 @@
       false,
       false,
       false,
+      true,
       false,
       true,
       true,
       true,
       true,
-      null
+      true,
+      true
     ]
   },
-  "hash": "9d729b82ded04ecfc02ca2690cc969f75459906ff2aec73ae8b2045b89357f96"
+  "hash": "99885ceee0b31e000783645d2bed72f8065c45d01bb099210babd4256015c34d"
 }

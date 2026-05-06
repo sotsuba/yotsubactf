@@ -1,0 +1,23 @@
+# monitoring/loki/rules/fake/rules.yml
+groups:
+  - name: log_alerts
+    rules:
+      - alert: LogErrorRateHigh
+        expr: |
+          sum by (container) (rate({container=~".+"} |~ "(?i)ERROR" [5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate in logs for {{ $labels.container }}"
+          description: "Container {{ $labels.container }} has elevated error rate in logs."
+
+      - alert: PanicDetected
+        expr: |
+          sum by (container) (count_over_time({container=~".+"} |~ "(?i)panic" [1m])) > 0
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Panic detected in {{ $labels.container }} logs"
+          description: "A panic was detected in the logs of container {{ $labels.container }}."

@@ -215,6 +215,8 @@ pub struct CtfEvent {
     #[serde(default)]
     pub social_links: Vec<SocialLink>,
     pub is_onsite: bool,
+    pub enriched_at: Option<DateTime<Utc>>,
+    pub notified_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -264,11 +266,14 @@ pub struct Writeup {
     pub ctftime_id: i64,
     pub title: String,
     pub url: String,
+    pub summary: Option<String>,
     pub event_id: i64,
     pub category: Option<String>,
     pub event_name: Option<String>,
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    pub enriched_at: Option<DateTime<Utc>>,
+    pub notified_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]

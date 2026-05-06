@@ -142,6 +142,8 @@ impl TryFrom<EnrichedEvent> for CtfEvent {
             description: Some(raw.description),
             social_links: enriched.social_links,
             is_onsite: raw.onsite,
+            enriched_at: None,
+            notified_at: None,
         })
     }
 }

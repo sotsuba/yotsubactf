@@ -1,4 +1,6 @@
 pub mod digest;
+pub mod enrich;
+pub mod notify;
 pub mod remind;
 #[cfg(test)]
 mod remind_tests;

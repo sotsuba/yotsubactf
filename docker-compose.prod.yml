@@ -1,81 +1,166 @@
 # docker-compose.prod.yml
-# Run locally: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
-
 services:
-  postgres-prod:
-    image: postgres:16-alpine
-    restart: unless-stopped
+  postgres:
     environment:
-      POSTGRES_USER: ctfbot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ctfbot_prod
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ctfbot"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis-prod:
-    image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --save 60 1
+
+  redis:
     volumes:
       - redisdata_prod:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-
-  scheduler-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: scheduler
     restart: unless-stopped
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
-      redis-prod:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-prod:5432/ctfbot_prod
-      REDIS_URL: redis://redis-prod:6379
-      DISCORD_TOKEN: ${DISCORD_TOKEN}
-      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
-      SCRAPE_INTERVAL_SECS: 3600
-      REMIND_INTERVAL_SECS: 60
-      RESULTS_INTERVAL_SECS: 21600
-      WRITEUPS_INTERVAL_SECS: 7200
-      DIGEST_INTERVAL_SECS: 3600
-      RUST_LOG: info
-      HEALTH_PORT: 8085
+
+  scheduler:
+    restart: unless-stopped
     ports:
       - "127.0.0.1:8086:8085"
 
-  gateway-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: gateway
+  gateway:
     restart: unless-stopped
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
-      redis-prod:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres-prod:5432/ctfbot_prod
-      REDIS_URL: redis://redis-prod:6379
-      DISCORD_TOKEN: ${DISCORD_TOKEN}
-      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
-      DISCORD_GUILD_ID: ""
-      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
-      RUST_LOG: info
-      HEALTH_PORT: 8085
     ports:
       - "127.0.0.1:8085:8085"
+
+  db-backup:
+    build:
+      context: .
+      dockerfile: scripts/backup/Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ctfbot
+      POSTGRES_USER: ctfbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET}
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT}
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_KEY}
+      AWS_DEFAULT_REGION: ${BACKUP_S3_REGION}
+    volumes:
+      - ./scripts/backup/pg_backup.sh:/scripts/pg_backup.sh:ro
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.prod.yml'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - monitoring
+      - backend
+
+  alertmanager:
+    build:
+      context: ./monitoring/alertmanager
+      dockerfile: Dockerfile
+
+    restart: unless-stopped
+    environment:
+      - ENV=prod
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+    volumes:
+      - ./monitoring/alertmanager:/config:ro
+
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD}"
+    volumes:
+      - grafdata_prod:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3030:3000"
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - ./monitoring/loki/rules:/loki/rules:ro
+      - lokidata_prod:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitoring
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - backend
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis:6379
+    networks:
+      - backend
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://ctfbot:${POSTGRES_PASSWORD}@postgres:5432/ctfbot?sslmode=disable"
+    networks:
+      - backend
+
+
+  metabase:
+    image: metabase/metabase:v0.51.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - metabase_data_prod:/metabase-data
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ctfbot
+      MB_DB_PORT: 5432
+      MB_DB_USER: ctfbot
+      MB_DB_PASS: ${POSTGRES_PASSWORD}
+      MB_DB_HOST: postgres
+    networks:
+      - backend
+      - monitoring
 
 volumes:
   pgdata_prod:
   redisdata_prod:
+  grafdata_prod:
+  metabase_data_prod:
+  lokidata_prod:

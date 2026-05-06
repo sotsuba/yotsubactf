@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                id, ctftime_id, title, url, event_id, \n                category, event_name, published_at, created_at as \"created_at!\"\n            FROM writeups\n            WHERE notified_at IS NULL\n            ORDER BY created_at ASC\n            ",
+  "query": "\n            SELECT \n                id, ctftime_id, title, url, summary, event_id, \n                category, event_name, published_at, created_at as \"created_at!\",\n                enriched_at, notified_at\n            FROM writeups\n            WHERE notified_at IS NULL\n            ORDER BY created_at ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -25,27 +25,42 @@
       },
       {
         "ordinal": 4,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "event_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "category",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "event_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "published_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "enriched_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "notified_at",
         "type_info": "Timestamptz"
       }
     ],
@@ -57,12 +72,15 @@
       false,
       false,
       false,
+      true,
       false,
+      true,
+      true,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "3965c64f1ee144805336d6c6819ccd13ba038f17946cee3431378e470de34cdd"
+  "hash": "96cdf04c2f34e54897ec5e6d0ef8dff651b6f75ae8368e37ff8f67099454b8ae"
 }

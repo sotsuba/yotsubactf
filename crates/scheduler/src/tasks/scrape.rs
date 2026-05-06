@@ -19,6 +19,7 @@ impl SchedulerTask for ScrapeTask {
 pub async fn run_once(state: &SharedState) -> CtfResult<()> {
     let stats = crate::pipeline::run_once(
         &state.http,
+        state.llm.as_ref(),
         &*state.event_repo,
         &*state.guild_repo,
         &*state.notifier,

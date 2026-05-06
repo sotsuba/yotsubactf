@@ -28,6 +28,8 @@ struct DbCtfEvent {
     #[allow(dead_code)]
     updated_at: DateTime<Utc>,
     is_onsite: bool,
+    enriched_at: Option<DateTime<Utc>>,
+    notified_at: Option<DateTime<Utc>>,
     total_count: Option<i64>,
 }
 
@@ -50,6 +52,8 @@ impl From<DbCtfEvent> for CtfEvent {
             description: row.description,
             social_links,
             is_onsite: row.is_onsite,
+            enriched_at: row.enriched_at,
+            notified_at: row.notified_at,
         }
     }
 }
@@ -95,6 +99,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             "SELECT id, ctftime_id, title, url, start_time, end_time, \
              weight, format, organiser, description, \
              social_links, created_at, updated_at, is_onsite, \
+             enriched_at, notified_at, \
              COUNT(*) OVER() as total_count \
              FROM ctf_events WHERE end_time >= ",
         );
@@ -157,6 +162,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             SELECT id, ctftime_id, title, url, start_time, end_time,
                    weight, format, organiser, description,
                    social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at,
                    NULL as total_count
             FROM ctf_events
             WHERE ctftime_id = $1
@@ -176,6 +182,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             SELECT id, ctftime_id, title, url, start_time, end_time,
                    weight, format, organiser, description,
                    social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at,
                    COUNT(*) OVER() as total_count
             FROM ctf_events
             WHERE NOW() BETWEEN start_time AND end_time
@@ -206,6 +213,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             SELECT id, ctftime_id, title, url, start_time, end_time,
                    weight, format, organiser, description,
                    social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at,
                    NULL as total_count
             FROM ctf_events
             WHERE title ILIKE $1
@@ -232,6 +240,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             SELECT id, ctftime_id, title, url, start_time, end_time,
                    weight, format, organiser, description,
                    social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at,
                    NULL as total_count
             FROM ctf_events
             WHERE end_time BETWEEN $1 AND $2
@@ -257,6 +266,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             "SELECT id, ctftime_id, title, url, start_time, end_time, \
              weight, format, organiser, description, \
              social_links, created_at, updated_at, is_onsite, \
+             enriched_at, notified_at, \
              COUNT(*) OVER() as total_count \
              FROM ctf_events WHERE end_time < ",
         );
@@ -298,6 +308,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             SELECT id, ctftime_id, title, url, start_time, end_time,
                    weight, format, organiser, description,
                    social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at,
                    NULL as total_count
             FROM ctf_events
             WHERE title ILIKE $1
@@ -323,6 +334,7 @@ impl ReadCtfRepository for PostgresCtfRepository {
             SELECT id, ctftime_id, title, url, start_time, end_time,
                    weight, format, organiser, description,
                    social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at,
                    word_similarity(title, $1) as score
             FROM ctf_events
             WHERE title % $1 AND word_similarity(title, $1) >= $2
@@ -354,6 +366,8 @@ impl ReadCtfRepository for PostgresCtfRepository {
                 description: r.description,
                 social_links,
                 is_onsite: r.is_onsite,
+                enriched_at: r.enriched_at,
+                notified_at: r.notified_at,
             }, r.score.unwrap_or(0.0))
         }))
     }
@@ -457,6 +471,69 @@ impl WriteCtfRepository for PostgresCtfRepository {
                 tracing::debug!(count = to_delete.len(), "Invalidated upcoming cache keys");
             }
         }
+        Ok(())
+    }
+
+    async fn list_unenriched_events(&self, limit: i64) -> Result<Vec<CtfEvent>> {
+        let rows = sqlx::query_as::<_, DbCtfEvent>(
+            r#"
+            SELECT id, ctftime_id, title, url, start_time, end_time,
+                   weight, format, organiser, description,
+                   social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at, NULL as total_count
+            FROM ctf_events
+            WHERE enriched_at IS NULL
+            ORDER BY created_at ASC
+            LIMIT $1
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
+
+        Ok(rows.into_iter().map(CtfEvent::from).collect())
+    }
+
+    async fn mark_event_enriched(&self, id: Uuid, description: &str) -> Result<()> {
+        sqlx::query!(
+            "UPDATE ctf_events SET description = $1, enriched_at = NOW() WHERE id = $2",
+            description,
+            id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
+        Ok(())
+    }
+
+    async fn list_unnotified_events(&self) -> Result<Vec<CtfEvent>> {
+        let rows = sqlx::query_as::<_, DbCtfEvent>(
+            r#"
+            SELECT id, ctftime_id, title, url, start_time, end_time,
+                   weight, format, organiser, description,
+                   social_links, created_at, updated_at, is_onsite,
+                   enriched_at, notified_at, NULL as total_count
+            FROM ctf_events
+            WHERE notified_at IS NULL AND (enriched_at IS NOT NULL OR description IS NULL OR description = '')
+            ORDER BY created_at ASC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
+
+        Ok(rows.into_iter().map(CtfEvent::from).collect())
+    }
+
+    async fn mark_event_notified(&self, id: Uuid) -> Result<()> {
+        sqlx::query!(
+            "UPDATE ctf_events SET notified_at = NOW() WHERE id = $1",
+            id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(crate::db_err)?;
         Ok(())
     }
 }

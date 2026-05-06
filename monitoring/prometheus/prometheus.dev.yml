@@ -1,0 +1,25 @@
+# monitoring/prometheus/prometheus.dev.yml
+global:
+  scrape_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/recording_rules.yml"
+
+# No alerting section in dev to prevent noise
+scrape_configs:
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:8085']
+  - job_name: 'scheduler'
+    static_configs:
+      - targets: ['scheduler:8085']
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+

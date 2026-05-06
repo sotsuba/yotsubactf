@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE writeups SET summary = $1 WHERE ctftime_id = $2 AND (summary IS NULL OR summary = '')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d92ac3f67273846c9f559774c7a1f66e5154f6abeef8bf7ff96d7bcf2375f916"
+}

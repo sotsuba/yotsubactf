@@ -1,164 +1,78 @@
+# docker-compose.base.yml
 services:
-  # ============================================================================
-  # Core Infrastructure
-  # ============================================================================
   postgres:
     image: postgres:16-alpine
-    restart: unless-stopped
     environment:
       POSTGRES_USER: ctfbot
-      POSTGRES_PASSWORD: ctfbot
       POSTGRES_DB: ctfbot
-    # Bind to localhost only to prevent unintentional public exposure
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - backend
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctfbot}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ctfbot"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - backend
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379"
-    # Persist append-only file (AOF) and RDB snapshots to prevent data loss 
-    # across container restarts or recreations.
-    volumes:
-      - redisdata:/data
-    command: redis-server --save 60 1 --loglevel warning
-    networks:
-      - backend
+    command: redis-server --save 60 1
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 5s
-      retries: 5
+    networks:
+      - backend
 
-  # ============================================================================
-  # Application Services
-  # ============================================================================
   scheduler:
     build:
       context: .
       dockerfile: Dockerfile
       target: scheduler
-      # Embed BuildKit cache metadata to accelerate CI/CD pipelines
-      args:
-        BUILDKIT_INLINE_CACHE: "1"
-    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://ctfbot:ctfbot@postgres:5432/ctfbot
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot
       REDIS_URL: redis://redis:6379
       DISCORD_TOKEN: ${DISCORD_TOKEN}
-      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL:-admin@example.com}
-      SCRAPE_INTERVAL_SECS:   ${SCRAPE_INTERVAL_SECS:-3600}
-      RESULTS_INTERVAL_SECS:  ${RESULTS_INTERVAL_SECS:-21600}
-      WRITEUPS_INTERVAL_SECS: ${WRITEUPS_INTERVAL_SECS:-3600}
-      DIGEST_INTERVAL_SECS:   ${DIGEST_INTERVAL_SECS:-3600}
-      REMIND_INTERVAL_SECS:   ${REMIND_INTERVAL_SECS:-60}
-      RUST_LOG: ${RUST_LOG:-info}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      GEMINI_ENABLED: ${GEMINI_ENABLED:-true}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      GEMINI_TIMEOUT_SECS: ${GEMINI_TIMEOUT_SECS:-30}
+      GEMINI_DIGEST_TIMEOUT_SECS: ${GEMINI_DIGEST_TIMEOUT_SECS:-60}
+      GEMINI_GATED_MIN_INTERVAL_MS: ${GEMINI_GATED_MIN_INTERVAL_MS:-500}
+      GEMINI_GATED_MAX_INTERVAL_MS: ${GEMINI_GATED_MAX_INTERVAL_MS:-10000}
       HEALTH_PORT: 8085
-    ports:
-      - "127.0.0.1:8086:8085"
     networks:
-      - backend
+      backend:
+        aliases:
+          - scheduler
 
   gateway:
     build:
       context: .
       dockerfile: Dockerfile
       target: gateway
-      args:
-        BUILDKIT_INLINE_CACHE: "1"
-    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://ctfbot:ctfbot@postgres:5432/ctfbot
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD:-ctfbot}@postgres:5432/ctfbot
       REDIS_URL: redis://redis:6379
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
-      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
-      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL:-admin@example.com}
-      RUST_LOG: ${RUST_LOG:-info}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
       HEALTH_PORT: 8085
-    ports:
-      - "127.0.0.1:8085:8085"
     networks:
-      - backend
+      backend:
+        aliases:
+          - gateway
 
-  # ============================================================================
-  # Monitoring & Analytics
-  # ============================================================================
-  prometheus:
-    image: prom/prometheus:v3.1.0
-    restart: unless-stopped
-    volumes:
-      # Mount configuration as read-only (:ro) for security
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "127.0.0.1:9090:9090"
-    networks:
-      - monitoring
-      - backend
-
-  grafana:
-    image: grafana/grafana:11.4.0
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3030:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_AUTH_ANONYMOUS_ENABLED: "false"
-    volumes:
-      - grafdata:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
-    depends_on:
-      - prometheus
-    networks:
-      - monitoring
-
-  metabase:
-    image: metabase/metabase:v0.51.1
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:3001:3000"
-    volumes:
-      - metabase_data:/metabase-data
-    # Bypass default local H2 database in favor of Postgres for production-grade reliability
-    environment:
-      MB_DB_TYPE: postgres
-      MB_DB_DBNAME: ctfbot
-      MB_DB_PORT: 5432
-      MB_DB_USER: ctfbot
-      MB_DB_PASS: ctfbot
-      MB_DB_HOST: postgres
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - backend
-      - monitoring
-
-# ============================================================================
-# Global Definitions
-# ============================================================================
 networks:
   backend:
   monitoring:
@@ -166,5 +80,3 @@ networks:
 volumes:
   pgdata:
   redisdata:
-  grafdata:
-  metabase_data:

@@ -1,0 +1,78 @@
+# monitoring/prometheus/alerts/prod-only.yml
+# Application performance and threshold-sensitive alerts
+
+groups:
+  - name: ctfbot.gateway
+    rules:
+      - alert: HighCommandErrorRate
+        expr: (sum(rate(gateway_commands_total{result="error"}[5m])) / sum(rate(gateway_commands_total[5m]))) > 0.10 and sum(rate(gateway_commands_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated command error rate ({{ $value | humanizePercentage }})"
+
+  - name: ctfbot.scheduler
+    rules:
+      - alert: SchedulerTaskHighErrorRate
+        expr: (sum(rate(scheduler_tasks_total{result="error"}[15m])) by (task) / sum(rate(scheduler_tasks_total[15m])) by (task)) > 0.50 and sum(rate(scheduler_tasks_total[15m])) by (task) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Task '{{ $labels.task }}' failing"
+
+  - name: host.performance
+    rules:
+      - alert: HostCpuHigh
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host CPU > 85%"
+
+      - alert: HostMemLow
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host Memory < 10% free"
+
+  - name: redis.monitoring
+    rules:
+      - alert: RedisEvictionsNonZero
+        expr: rate(redis_evicted_keys_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is evicting keys"
+
+      - alert: RedisMemoryHigh
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis Memory > 80%"
+
+  - name: postgres.monitoring
+    rules:
+      - alert: PgConnectionsHigh
+        expr: (sum(pg_stat_activity_count) / pg_settings_max_connections) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Postgres connections > 80%"
+
+      - alert: PgLongRunningQuery
+        expr: pg_stat_activity_max_tx_duration{state="active"} > 30
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Long running query detected (>30s)"
+

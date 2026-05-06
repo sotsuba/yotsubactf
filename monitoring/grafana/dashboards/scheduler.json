@@ -51,7 +51,120 @@
           "legendFormat": "{{task}} ({{result}})"
         }
       ]
+    },
+    {
+      "title": "Host CPU Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "CPU Usage (%)"
+        }
+      ]
+    },
+    {
+      "title": "Host Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "targets": [
+        {
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))",
+          "legendFormat": "Memory Usage (%)"
+        }
+      ]
+    },
+    {
+      "title": "Host Disk Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "targets": [
+        {
+          "expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint=\"/rootfs\"} / node_filesystem_size_bytes{mountpoint=\"/rootfs\"}))",
+          "legendFormat": "Disk Usage (%)"
+        }
+      ]
+    },
+    {
+      "title": "Redis Memory Usage (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "(redis_memory_used_bytes / redis_memory_max_bytes) * 100",
+          "legendFormat": "Used Memory (%)"
+        }
+      ]
+    },
+    {
+      "title": "Redis Eviction Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(redis_evicted_keys_total[5m])",
+          "legendFormat": "Evictions/s"
+        }
+      ]
+    },
+    {
+      "title": "Redis Keyspace Size",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum(redis_db_keys) by (db)",
+          "legendFormat": "DB {{db}}"
+        }
+      ]
+    },
+    {
+      "title": "Redis Connected Clients",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 24 },
+      "targets": [
+        {
+          "expr": "redis_connected_clients",
+          "legendFormat": "Clients"
+        }
+      ]
+    },
+    {
+      "title": "Postgres Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 32 },
+      "targets": [
+        {
+          "expr": "sum(pg_stat_activity_count) by (datname)",
+          "legendFormat": "{{datname}}"
+        }
+      ]
+    },
+    {
+      "title": "Postgres Max Transaction Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 32 },
+      "targets": [
+        {
+          "expr": "pg_stat_activity_max_tx_duration",
+          "legendFormat": "Max TX Duration (s)"
+        }
+      ]
+    },
+    {
+      "title": "Postgres Index Hit Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 32 },
+      "targets": [
+        {
+          "expr": "sum(pg_statio_user_indexes_idx_blks_hit) / (sum(pg_statio_user_indexes_idx_blks_hit) + sum(pg_statio_user_indexes_idx_blks_read))",
+          "legendFormat": "Index Hit Rate"
+        }
+      ]
     }
+
+
+
   ],
   "refresh": "10s",
   "schemaVersion": 39,

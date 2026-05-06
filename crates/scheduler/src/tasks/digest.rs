@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{Datelike, Utc};
 use shared::CtfResult;
 use shared::{ReadCtfRepository, UpcomingFilter};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub struct DigestTask;
 
@@ -44,6 +44,7 @@ pub async fn run_once(state: &SharedState) -> CtfResult<()> {
             &*state.event_repo,
             &*state.writeup_repo,
             &*state.notifier,
+            state.llm.as_ref(),
             &target.channel_id,
             now,
         )
@@ -69,6 +70,7 @@ async fn send_digest(
     event_repo: &(impl ReadCtfRepository + ?Sized),
     writeup_repo: &(impl shared::WriteupRepository + ?Sized),
     notifier: &(impl shared::contracts::Notifier + ?Sized),
+    llm: Option<&crate::llm::GeminiClient>,
     channel_id: &str,
     now: chrono::DateTime<Utc>,
 ) -> CtfResult<()> {
@@ -87,9 +89,21 @@ async fn send_digest(
     let week_num = now.format("%W/%Y");
     let mut description = String::new();
 
+    if let Some(llm) = llm
+        && (!current.events.is_empty() || !upcoming.events.is_empty())
+    {
+        let digest_data = build_digest_data(&current, &upcoming, now);
+        if let Some(narrative) = llm.digest_narrative(&digest_data).await {
+            description.push_str(&narrative);
+            description.push_str("\n\n");
+        } else {
+            warn!("Digest narrative generation failed; falling back to list-only digest");
+        }
+    }
+
     if !current.events.is_empty() {
         description.push_str("⚡  **Currently running**\n");
-        for event in &current.events {
+        for event in current.events.iter().take(3) {
             let ends_in = event.end_time.signed_duration_since(now);
             let days_left = ends_in.num_days();
             description.push_str(&format!(
@@ -144,9 +158,49 @@ async fn send_digest(
         "title": format!("🗓️  Weekly CTF Digest — Week {week_num}"),
         "description": description,
         "color": 0x2f6fed,
-        "footer": { "text": "CTF Bot" },
+        "footer": { "text": "YotsubaCTF" },
         "timestamp": now.to_rfc3339(),
     });
 
     notifier.send_digest(channel_id, embed).await
+}
+
+fn build_digest_data(
+    current: &shared::PaginatedEvents,
+    upcoming: &shared::PaginatedEvents,
+    now: chrono::DateTime<Utc>,
+) -> String {
+    let mut text = String::new();
+    text.push_str(&format!("Now: {}\n", now.to_rfc3339()));
+    text.push_str(&format!("Current events: {}\n", current.total_count));
+    for event in current.events.iter().take(5) {
+        let ends_in = event.end_time.signed_duration_since(now).num_days();
+        let weight = event
+            .weight
+            .map(|w| format!("{w:.1}"))
+            .unwrap_or("?".to_string());
+        let fmt = event.format.as_deref().unwrap_or("?");
+        text.push_str(&format!(
+            "- {} | format: {} | weight: {} | ends in {} day(s)\n",
+            event.title, fmt, weight, ends_in
+        ));
+    }
+
+    text.push_str(&format!("Upcoming events: {}\n", upcoming.total_count));
+    for event in upcoming.events.iter().take(10) {
+        let weight = event
+            .weight
+            .map(|w| format!("{w:.1}"))
+            .unwrap_or("?".to_string());
+        let fmt = event.format.as_deref().unwrap_or("?");
+        text.push_str(&format!(
+            "- {} | format: {} | weight: {} | starts: {}\n",
+            event.title,
+            fmt,
+            weight,
+            event.start_time.format("%Y-%m-%d")
+        ));
+    }
+
+    text
 }

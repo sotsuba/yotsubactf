@@ -1,0 +1,35 @@
+# monitoring/alertmanager/alertmanager.prod.yml.tmpl
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'service']
+  group_wait:      30s
+  group_interval:  5m
+  repeat_interval: 1h
+  receiver: discord
+
+  routes:
+    - matchers:
+        - alertname = "Watchdog"
+      receiver: healthchecks
+      repeat_interval: 1m
+      group_wait: 0s 
+
+receivers:
+  - name: discord
+    discord_configs:
+      - webhook_url: "${DISCORD_WEBHOOK_URL}"
+        title: '{{ if eq .Status "firing" }}🚨 [FIRING:{{ .Alerts.Firing | len }}]{{ else }}✅ [RESOLVED]{{ end }} {{ .GroupLabels.alertname }}'
+        message: |
+          {{- range .Alerts }}
+          **Severity:** {{ .Labels.severity | toUpper }}
+          **Summary:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Since:** {{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}
+          {{- end }}
+
+  - name: healthchecks
+    webhook_configs:
+      - url: "${HEALTHCHECKS_PING_URL}"
+        send_resolved: false

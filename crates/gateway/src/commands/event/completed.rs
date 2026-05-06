@@ -171,13 +171,13 @@ fn build_response(
 
     let nav = PaginationNav {
         prev_id: format!(
-            "event:completed:page:{}:{}:{}",
+            "event_completed:page:{}:{}:{}",
             page - 1,
             limit,
             filter_to_qs(filter)
         ),
         next_id: format!(
-            "event:completed:page:{}:{}:{}",
+            "event_completed:page:{}:{}:{}",
             page + 1,
             limit,
             filter_to_qs(filter)
