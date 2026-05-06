@@ -6,7 +6,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.95-orange.svg)](https://www.rust-lang.org)
 > My imaginary friends hate to open CTFTime to see things 💔. I also cannot open it everyday.
 >
-> So I force Yotsuba do this tasks for us. 🍀
+> So I force Yotsuba do these tasks for us. 🍀
 
 
 Here's the Yotsuba if you don't know who she is. She is from the manga **Yotsuba&!** (read it, it's very fun).
