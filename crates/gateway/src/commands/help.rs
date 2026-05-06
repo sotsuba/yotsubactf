@@ -29,6 +29,7 @@ pub fn handle() -> InteractionResponse {
              **`/upcoming [count]`** — List the next scheduled CTFs (max 20)\n\
              **`/subscribe channel:#channel`** — Subscribe this server to CTF notifications\n\
              **`/unsubscribe`** — Stop receiving CTF notifications\n\
+               **`/adminrole`** — Manage admin role mappings\n\
              **`/help`** — Show this message",
         )
         .now()

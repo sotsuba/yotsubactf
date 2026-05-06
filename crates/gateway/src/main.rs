@@ -20,13 +20,14 @@ mod state;
 mod ctftime_api;
 mod util;
 use db::{
-    PostgresCommandLogRepository, PostgresCtfRepository, PostgresGuildRepository,
-    PostgresReminderRepository, PostgresTeamRepository, PostgresWriteupRepository,
+    PostgresAdminRoleRepository, PostgresCommandLogRepository, PostgresCtfRepository,
+    PostgresGuildRepository, PostgresReminderRepository, PostgresTeamRepository,
+    PostgresWriteupRepository,
 };
 use moka::future::Cache;
 use shared::{
-    CommandLogRepository, GuildRepository, ReadCtfRepository, ReminderRepository, TeamRepository,
-    WriteupRepository,
+    AdminRoleRepository, CommandLogRepository, GuildRepository, ReadCtfRepository,
+    ReminderRepository, TeamRepository, WriteupRepository,
 };
 use state::AppState;
 use std::time::Duration;
@@ -108,6 +109,7 @@ async fn main() -> Result<()> {
             redis_client.clone(),
         )) as Arc<dyn ReadCtfRepository>,
         Arc::new(PostgresGuildRepository::new(pool.clone())) as Arc<dyn GuildRepository>,
+        Arc::new(PostgresAdminRoleRepository::new(pool.clone())) as Arc<dyn AdminRoleRepository>,
         Arc::new(PostgresReminderRepository::new(pool.clone())) as Arc<dyn ReminderRepository>,
         Arc::new(PostgresTeamRepository::new(pool.clone())) as Arc<dyn TeamRepository>,
         Arc::new(PostgresWriteupRepository::new(pool.clone(), redis_client))

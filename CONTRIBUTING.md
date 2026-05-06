@@ -71,6 +71,24 @@ monitoring/     # Prometheus alerts and Grafana dashboard JSON
 When adding a new slash command, the entry point is `crates/gateway/src/commands/`.
 Implement the `SlashCommand` trait and register the command in `CommandRegistry::new()`.
 
+### Admin roles (RBAC)
+
+Admin-only commands can declare a required admin level via `required_admin_role()`.
+The gateway enforces this on top of `MANAGE_GUILD`.
+
+Admin levels (highest to lowest):
+
+- owner
+- admin
+- moderator
+- analyst
+
+If a guild has no admin role mappings configured, the bot falls back to
+`MANAGE_GUILD` only.
+
+Use `/adminrole` to manage mappings (add/remove/list). The command expects
+Discord role IDs and maps them to an admin level.
+
 ## Making Changes
 
 ### SQL queries

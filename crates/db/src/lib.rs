@@ -2,6 +2,7 @@
 // We duplicate the thin Postgres impls here rather than creating a cross-binary
 // dependency between scheduler and gateway.
 
+pub mod admin_roles;
 pub mod command_logs;
 pub mod events;
 pub mod guilds;
@@ -12,6 +13,7 @@ pub mod writeups;
 pub use redis;
 pub use sqlx::PgPool;
 
+pub use admin_roles::PostgresAdminRoleRepository;
 pub use command_logs::PostgresCommandLogRepository;
 pub use events::PostgresCtfRepository;
 pub use guilds::PostgresGuildRepository;

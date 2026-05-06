@@ -1,3 +1,4 @@
+pub mod admin_roles;
 pub mod cipher;
 pub mod digest;
 pub mod event;
@@ -13,7 +14,7 @@ pub mod writeups;
 
 use crate::state::AppState;
 use async_trait::async_trait;
-use shared::CtfResult;
+use shared::{AdminRole, CtfResult};
 use std::collections::HashMap;
 use std::sync::Arc;
 use twilight_http::Client as HttpClient;
@@ -31,6 +32,9 @@ pub trait SlashCommand: Send + Sync {
     }
     fn requires_manage_guild(&self) -> bool {
         false
+    }
+    fn required_admin_role(&self) -> Option<AdminRole> {
+        None
     }
     fn definition(&self) -> Command;
     async fn handle(&self, ctx: CommandContext<'_>) -> CtfResult<InteractionResponse>;
@@ -67,6 +71,7 @@ impl CommandRegistry {
             Arc::new(leaderboard::LeaderboardCommand),
             Arc::new(writeups::WriteupsCommand),
             Arc::new(team::TeamCommand),
+            Arc::new(admin_roles::AdminRoleCommand),
             Arc::new(subscribe::SubscribeCommand),
             Arc::new(unsubscribe::UnsubscribeCommand),
             Arc::new(digest::DigestCommand),
