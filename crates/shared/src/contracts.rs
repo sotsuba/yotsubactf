@@ -9,8 +9,8 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::models::{
-    CtfEvent, PaginatedEvents, Reminder, TeamResult, TrackedTeam, UpsertStatus, Writeup,
-    WriteupSearchResult,
+    AdminRole, AdminRoleAssignment, CtfEvent, PaginatedEvents, Reminder, TeamResult, TrackedTeam,
+    UpsertStatus, Writeup, WriteupSearchResult,
 };
 
 use serde::{Deserialize, Serialize};
@@ -219,6 +219,31 @@ pub trait GuildRepository: Send + Sync {
 
     /// Return the total number of guilds with an active subscription.
     async fn count_subscribed_guilds(&self) -> crate::error::CtfResult<i64>;
+}
+
+// ── Admin role repository ────────────────────────────────────────────────────
+
+#[async_trait]
+pub trait AdminRoleRepository: Send + Sync {
+    async fn list_admin_roles(
+        &self,
+        guild_id: &str,
+    ) -> crate::error::CtfResult<Vec<AdminRoleAssignment>>;
+
+    async fn upsert_admin_role(
+        &self,
+        guild_id: &str,
+        role_id: &str,
+        role: AdminRole,
+    ) -> crate::error::CtfResult<()>;
+
+    async fn delete_admin_role(
+        &self,
+        guild_id: &str,
+        role_id: &str,
+    ) -> crate::error::CtfResult<bool>;
+
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 // ── Reminder repository ───────────────────────────────────────────────────────

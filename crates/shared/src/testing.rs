@@ -1,12 +1,12 @@
 use crate::contracts::{
-    CommandLogRepository, GuildRepository, Notifier, ReadCtfRepository, ReminderAdvanceResult,
-    ReminderRepository, Subscription, TeamRepository, UpcomingFilter, WriteCtfRepository,
-    WriteupRepository,
+    AdminRoleRepository, CommandLogRepository, GuildRepository, Notifier, ReadCtfRepository,
+    ReminderAdvanceResult, ReminderRepository, Subscription, TeamRepository, UpcomingFilter,
+    WriteCtfRepository, WriteupRepository,
 };
 use crate::error::{CtfError, CtfResult as Result};
 use crate::models::{
-    CtfEvent, DigestConfig, DigestTarget, PaginatedEvents, Reminder, ReminderKind, TeamResult,
-    TrackedTeam, UpsertStatus, Writeup, WriteupSearchResult,
+    AdminRole, AdminRoleAssignment, CtfEvent, DigestConfig, DigestTarget, PaginatedEvents,
+    Reminder, ReminderKind, TeamResult, TrackedTeam, UpsertStatus, Writeup, WriteupSearchResult,
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -635,6 +635,48 @@ impl CommandLogRepository for InMemoryCommandLogRepository {
         _latency_ms: i64,
     ) -> Result<()> {
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+/// A thread-safe in-memory AdminRole repository for unit testing.
+#[derive(Default)]
+pub struct InMemoryAdminRoleRepository {
+    roles: RwLock<HashMap<(String, String), AdminRole>>,
+}
+
+#[async_trait]
+impl AdminRoleRepository for InMemoryAdminRoleRepository {
+    async fn list_admin_roles(&self, guild_id: &str) -> Result<Vec<AdminRoleAssignment>> {
+        let roles = self.roles.read().await;
+        Ok(roles
+            .iter()
+            .filter(|((gid, _), _)| gid == guild_id)
+            .map(|((gid, rid), role)| AdminRoleAssignment {
+                guild_id: gid.clone(),
+                role_id: rid.clone(),
+                role: *role,
+            })
+            .collect())
+    }
+
+    async fn upsert_admin_role(
+        &self,
+        guild_id: &str,
+        role_id: &str,
+        role: AdminRole,
+    ) -> Result<()> {
+        let mut roles = self.roles.write().await;
+        roles.insert((guild_id.to_string(), role_id.to_string()), role);
+        Ok(())
+    }
+
+    async fn delete_admin_role(&self, guild_id: &str, role_id: &str) -> Result<bool> {
+        let mut roles = self.roles.write().await;
+        Ok(roles.remove(&(guild_id.to_string(), role_id.to_string())).is_some())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

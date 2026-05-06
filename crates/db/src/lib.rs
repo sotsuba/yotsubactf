@@ -3,6 +3,7 @@
 // dependency between scheduler and gateway.
 
 pub mod command_logs;
+pub mod admin_roles;
 pub mod events;
 pub mod guilds;
 pub mod reminders;
@@ -13,6 +14,7 @@ pub use redis;
 pub use sqlx::PgPool;
 
 pub use command_logs::PostgresCommandLogRepository;
+pub use admin_roles::PostgresAdminRoleRepository;
 pub use events::PostgresCtfRepository;
 pub use guilds::PostgresGuildRepository;
 pub use reminders::PostgresReminderRepository;

@@ -1,6 +1,5 @@
 use async_trait::async_trait;
-use shared::GuildRepository;
-use shared::{CtfError, CtfResult};
+use shared::{AdminRole, CtfError, CtfResult, GuildRepository};
 use twilight_model::application::command::CommandType;
 use twilight_model::http::interaction::InteractionResponse;
 use twilight_util::builder::command::CommandBuilder;
@@ -20,6 +19,9 @@ impl SlashCommand for UnsubscribeCommand {
     }
     fn requires_manage_guild(&self) -> bool {
         true
+    }
+    fn required_admin_role(&self) -> Option<AdminRole> {
+        Some(AdminRole::Admin)
     }
     fn definition(&self) -> twilight_model::application::command::Command {
         CommandBuilder::new(

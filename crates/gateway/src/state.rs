@@ -8,8 +8,8 @@
 use crate::ctftime_api::{TeamEntry, TeamSearchResult};
 use moka::future::Cache;
 use shared::{
-    CommandLogRepository, GuildRepository, ReadCtfRepository, ReminderRepository, TeamRepository,
-    WriteupRepository,
+    AdminRoleRepository, CommandLogRepository, GuildRepository, ReadCtfRepository,
+    ReminderRepository, TeamRepository, WriteupRepository,
 };
 use std::sync::Arc;
 
@@ -17,6 +17,7 @@ use governor::{Quota, RateLimiter};
 use std::num::NonZeroU32;
 
 pub struct AppState {
+    pub admin_roles: Arc<dyn AdminRoleRepository>,
     pub guilds: Arc<dyn GuildRepository>,
     pub events: Arc<dyn ReadCtfRepository>,
     pub reminders: Arc<dyn ReminderRepository>,
@@ -37,6 +38,7 @@ impl AppState {
     pub fn new(
         events: Arc<dyn ReadCtfRepository>,
         guilds: Arc<dyn GuildRepository>,
+        admin_roles: Arc<dyn AdminRoleRepository>,
         reminders: Arc<dyn ReminderRepository>,
         teams: Arc<dyn TeamRepository>,
         writeups: Arc<dyn WriteupRepository>,
@@ -53,6 +55,7 @@ impl AppState {
             .build();
 
         Self {
+            admin_roles,
             events,
             guilds,
             reminders,

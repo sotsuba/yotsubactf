@@ -46,6 +46,62 @@ pub enum ReminderKind {
     Recurring,
 }
 
+// ── Admin roles ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AdminRole {
+    Owner,
+    Admin,
+    Moderator,
+    Analyst,
+}
+
+impl AdminRole {
+    pub fn allows(self, required: AdminRole) -> bool {
+        self.level() >= required.level()
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AdminRole::Owner => "owner",
+            AdminRole::Admin => "admin",
+            AdminRole::Moderator => "moderator",
+            AdminRole::Analyst => "analyst",
+        }
+    }
+
+    fn level(self) -> u8 {
+        match self {
+            AdminRole::Owner => 4,
+            AdminRole::Admin => 3,
+            AdminRole::Moderator => 2,
+            AdminRole::Analyst => 1,
+        }
+    }
+}
+
+impl std::str::FromStr for AdminRole {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "owner" => Ok(AdminRole::Owner),
+            "admin" => Ok(AdminRole::Admin),
+            "moderator" => Ok(AdminRole::Moderator),
+            "analyst" => Ok(AdminRole::Analyst),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AdminRoleAssignment {
+    pub guild_id: String,
+    pub role_id: String,
+    pub role: AdminRole,
+}
+
 /// A flexible reminder record (event-linked, timer, or recurring).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reminder {

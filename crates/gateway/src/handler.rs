@@ -12,7 +12,7 @@ use twilight_model::id::marker::ApplicationMarker;
 use crate::commands;
 use crate::embed::{CtfEmbed, ephemeral_embed, ephemeral_error};
 use crate::state::AppState;
-use shared::{CtfError, CtfResult, ReadCtfRepository, ReminderRepository};
+use shared::{AdminRole, CtfError, CtfResult, ReadCtfRepository, ReminderRepository};
 
 /// Log a user-facing error at debug level (expected, not a bug).
 macro_rules! log_user_error {
@@ -134,29 +134,69 @@ async fn handle_interaction(
                 // Special case for reminder command group to use custom dispatcher
                 commands::reminder::handle_interaction(http, &interaction, state).await
             } else if let Some(cmd) = state.registry.get(data.name.as_str()) {
-                if interaction.kind
-                    == twilight_model::application::interaction::InteractionType::ApplicationCommandAutocomplete
-                {
-                    match cmd.autocomplete(ctx).await {
-                        Ok(Some(res)) => Ok(res),
-                        Ok(None) => return Ok(()),
-                        Err(e) => Err(e),
-                    }
+                let mut allowed_by_admin_role = true;
+
+                if cmd.requires_guild() && interaction.guild_id.is_none() {
+                    Err(CtfError::InvalidInput(
+                        "This command must be used in a server.".into(),
+                    ))
+                } else if cmd.requires_manage_guild() && !member_can_manage_guild {
+                    log_user_error!(
+                        data.name,
+                        interaction.guild_id.map(|id| id.get()),
+                        user_id,
+                        "missing MANAGE_GUILD permission"
+                    );
+                    Err(CtfError::PermissionDenied(
+                        "You need the **Manage Server** permission to use this command.".into(),
+                    ))
                 } else {
-                    if cmd.requires_guild() && interaction.guild_id.is_none() {
-                        Err(CtfError::InvalidInput(
-                            "This command must be used in a server.".into(),
-                        ))
-                    } else if cmd.requires_manage_guild() && !member_can_manage_guild {
+                    if let (Some(required_role), Some(guild_id)) =
+                        (cmd.required_admin_role(), guild_id_str.as_deref())
+                    {
+                        let member_roles = interaction
+                            .member
+                            .as_ref()
+                            .map(|m| {
+                                m.roles
+                                    .iter()
+                                    .map(|id| id.get().to_string())
+                                    .collect::<std::collections::HashSet<_>>()
+                            })
+                            .unwrap_or_default();
+
+                        let role_assignments = state.admin_roles.list_admin_roles(guild_id).await?;
+
+                        // If no admin roles are configured, fall back to MANAGE_GUILD.
+                        if !role_assignments.is_empty() {
+                            allowed_by_admin_role = role_assignments.iter().any(|assignment| {
+                                member_roles.contains(&assignment.role_id)
+                                    && assignment.role.allows(required_role)
+                            });
+                        }
+                    }
+
+                    if !allowed_by_admin_role {
                         log_user_error!(
                             data.name,
                             interaction.guild_id.map(|id| id.get()),
                             user_id,
-                            "missing MANAGE_GUILD permission"
+                            "missing admin role"
                         );
-                        Err(CtfError::PermissionDenied(
-                            "You need the **Manage Server** permission to use this command.".into(),
-                        ))
+                        Err(CtfError::PermissionDenied(format!(
+                            "You need an admin role of **{}** or higher to use this command.",
+                            cmd.required_admin_role()
+                                .unwrap_or(AdminRole::Admin)
+                                .as_str()
+                        )))
+                    } else if interaction.kind
+                        == twilight_model::application::interaction::InteractionType::ApplicationCommandAutocomplete
+                    {
+                        match cmd.autocomplete(ctx).await {
+                            Ok(Some(res)) => Ok(res),
+                            Ok(None) => return Ok(()),
+                            Err(e) => Err(e),
+                        }
                     } else {
                         cmd.handle(ctx).await
                     }

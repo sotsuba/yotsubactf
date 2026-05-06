@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use shared::{CtfError, CtfResult};
+use shared::{AdminRole, CtfError, CtfResult};
 use twilight_model::application::command::CommandType;
 use twilight_model::application::interaction::application_command::{
     CommandDataOption, CommandOptionValue,
@@ -26,6 +26,9 @@ impl SlashCommand for DigestCommand {
     }
     fn requires_manage_guild(&self) -> bool {
         true
+    }
+    fn required_admin_role(&self) -> Option<AdminRole> {
+        Some(AdminRole::Admin)
     }
     fn definition(&self) -> twilight_model::application::command::Command {
         CommandBuilder::new(
