@@ -6,9 +6,17 @@
   "schemaVersion": 39,
   "panels": [
     {
+      "id": 100,
+      "title": "Overview",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "title": "Commands (1h)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "targets": [{
         "expr": "sum(increase(gateway_commands_total[1h]))",
         "legendFormat": ""
@@ -18,7 +26,7 @@
     {
       "title": "Success Rate",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
       "targets": [{
         "expr": "sum(rate(gateway_commands_total{success=\"true\"}[5m])) / sum(rate(gateway_commands_total[5m]))",
         "legendFormat": ""
@@ -40,7 +48,7 @@
     {
       "title": "Guilds (subscribed)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
       "targets": [{
         "expr": "bot_guilds_total",
         "legendFormat": ""
@@ -49,7 +57,7 @@
     {
       "title": "Rate Limited (5m)",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
       "targets": [{
         "expr": "sum(increase(gateway_rate_limit_total[5m]))",
         "legendFormat": ""
@@ -58,7 +66,7 @@
     {
       "title": "Redis Miss Rate",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
       "targets": [{
         "expr": "sum(rate(db_redis_misses_total[5m])) / (sum(rate(db_redis_hits_total[5m])) + sum(rate(db_redis_misses_total[5m])))",
         "legendFormat": ""
@@ -78,9 +86,26 @@
       }
     },
     {
+      "title": "Slash vs Component",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "targets": [{
+        "expr": "sum(rate(gateway_commands_total[5m])) by (kind)",
+        "legendFormat": "{{kind}}"
+      }]
+    },
+    {
+      "id": 101,
+      "title": "Commands",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "title": "Command Rate (per second)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
       "targets": [{
         "expr": "sum(rate(gateway_commands_total[5m])) by (command)",
         "legendFormat": "{{command}}"
@@ -89,16 +114,33 @@
     {
       "title": "Top Commands (24h)",
       "type": "barchart",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
       "targets": [{
         "expr": "sort_desc(sum(increase(gateway_commands_total[24h])) by (command))",
         "legendFormat": "{{command}}"
       }]
     },
     {
+      "title": "Failed Commands",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "targets": [{
+        "expr": "sum(rate(gateway_commands_total{success=\"false\"}[5m])) by (command)",
+        "legendFormat": "{{command}}"
+      }]
+    },
+    {
+      "id": 102,
+      "title": "Latency & errors",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "title": "Average Latency by Command",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
       "targets": [{
         "expr": "rate(gateway_command_latency_seconds_sum[5m]) / rate(gateway_command_latency_seconds_count[5m])",
         "legendFormat": "avg {{command}}"
@@ -106,43 +148,26 @@
       "fieldConfig": { "defaults": { "unit": "s" } }
     },
     {
-      "title": "Latency p50 / p99 (cần Histogram fix)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "targets": [
-        {
-          "expr": "histogram_quantile(0.5, sum(rate(gateway_command_latency_seconds_bucket[5m])) by (le, command))",
-          "legendFormat": "p50 {{command}}"
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum(rate(gateway_command_latency_seconds_bucket[5m])) by (le, command))",
-          "legendFormat": "p99 {{command}}"
-        }
-      ],
-      "fieldConfig": { "defaults": { "unit": "s" } }
+      "title": "Latency p50 / p99 (Under Construction)",
+      "type": "text",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "options": {
+        "content": "<div style=\"text-align: center; padding: 40px;\">\n  <h3>🚧 Under Construction 🚧</h3>\n  <p>Histogram buckets are currently not emitting correctly. Debugging in progress.</p>\n</div>",
+        "mode": "html"
+      }
     },
     {
-      "title": "Failed Commands",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-      "targets": [{
-        "expr": "sum(rate(gateway_commands_total{success=\"false\"}[5m])) by (command)",
-        "legendFormat": "{{command}}"
-      }]
-    },
-    {
-      "title": "Slash vs Component",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
-      "targets": [{
-        "expr": "sum(rate(gateway_commands_total[5m])) by (kind)",
-        "legendFormat": "{{kind}}"
-      }]
+      "id": 103,
+      "title": "CTFTime API",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "collapsed": false,
+      "panels": []
     },
     {
       "title": "CTFTime API — Success vs Error",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
       "targets": [
         {
           "expr": "sum(rate(ctftime_api_requests_total{status=\"200\"}[5m])) by (endpoint)",
@@ -157,7 +182,7 @@
     {
       "title": "CTFTime API Latency p90",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
       "targets": [{
         "expr": "histogram_quantile(0.9, sum(rate(ctftime_api_latency_seconds_bucket[5m])) by (le, endpoint))",
         "legendFormat": "p90 {{endpoint}}"
