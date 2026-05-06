@@ -1,7 +1,9 @@
 use crate::SharedState;
 use async_trait::async_trait;
+use html_scraper::Html;
+use reqwest::Client;
 use shared::CtfResult;
-use tracing::{error, info};
+use tracing::info;
 
 use super::SchedulerTask;
 use crate::ctftime::writeups::fetch_recent_writeups;
@@ -23,8 +25,9 @@ pub async fn run_once(state: &SharedState) -> CtfResult<()> {
     let recent = fetch_recent_writeups(&state.http).await?;
     info!(count = recent.len(), "Fetched recent writeups");
 
-    for mut wu in recent {
+    for wu in recent {
         // Try to resolve event_id from the database by title matching
+        let mut wu = wu;
         if let Some(event_name) = &wu.event_name
             && let Ok(Some((event, score))) = state
                 .event_repo
@@ -56,67 +59,59 @@ pub async fn run_once(state: &SharedState) -> CtfResult<()> {
             wu.event_id = event.ctftime_id;
         }
 
-        if state.writeup_repo.upsert_writeup(&wu).await? {
-            info!(ctftime_id = wu.ctftime_id, "New writeup saved");
-        }
-    }
-
-    // 2. Notify guilds about unnotified writeups
-    let unnotified = state.writeup_repo.list_unnotified_writeups().await?;
-    if unnotified.is_empty() {
-        return Ok(());
-    }
-
-    info!(count = unnotified.len(), "Processing unnotified writeups");
-
-    for wu in unnotified {
-        // Find guilds that should receive this writeup.
-        // Targeted: guilds tracking a team that participated in this event.
-        let mut target_guilds = if wu.event_id > 0 {
-            state
-                .guild_repo
-                .list_guilds_tracking_event(wu.event_id)
-                .await
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-
-        // Fallback: if no targeted guilds (or event unknown), send to all active subscriptions that opted in.
-        if target_guilds.is_empty() {
-            target_guilds = state
-                .guild_repo
-                .list_writeup_opt_in_guilds()
-                .await
-                .unwrap_or_default();
-        }
-
-        let channel_ids: Vec<String> = target_guilds.into_iter().map(|s| s.channel_id).collect();
-
-        if channel_ids.is_empty() {
+        let inserted = state.writeup_repo.upsert_writeup(&wu).await?;
+        if inserted {
             info!(
                 ctftime_id = wu.ctftime_id,
-                "No recipients found. Marking as notified."
-            );
-            state.writeup_repo.mark_writeup_notified(wu.id).await?;
-            continue;
-        }
-
-        if let Err(err) = state.notifier.send_writeup(&wu, &channel_ids).await {
-            error!(
-                ?err,
-                ctftime_id = wu.ctftime_id,
-                "Failed to send writeup notification"
-            );
-        } else {
-            state.writeup_repo.mark_writeup_notified(wu.id).await?;
-            info!(
-                ctftime_id = wu.ctftime_id,
-                "Writeup notification sent to {} channels",
-                channel_ids.len()
+                "New writeup saved (queued for enrichment)"
             );
         }
     }
 
     Ok(())
+}
+
+const WRITEUP_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+const WRITEUP_TEXT_LIMIT: usize = 6000;
+
+pub(crate) async fn fetch_writeup_text(client: &Client, url: &str) -> Option<String> {
+    if url.trim().is_empty() {
+        return None;
+    }
+
+    let resp = client
+        .get(url)
+        .timeout(WRITEUP_FETCH_TIMEOUT)
+        .send()
+        .await
+        .ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    if let Some(content_type) = resp.headers().get(reqwest::header::CONTENT_TYPE)
+        && let Ok(ct) = content_type.to_str()
+    {
+        let ct = ct.to_lowercase();
+        if !ct.contains("text/html") && !ct.contains("application/xhtml+xml") {
+            return None;
+        }
+    }
+
+    let html = resp.text().await.ok()?;
+    let document = Html::parse_document(&html);
+    let mut text = document
+        .root_element()
+        .text()
+        .map(|t| t.trim())
+        .filter(|t| !t.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    text = text.replace("  ", " ");
+    if text.chars().count() > WRITEUP_TEXT_LIMIT {
+        text = text.chars().take(WRITEUP_TEXT_LIMIT).collect();
+    }
+
+    if text.is_empty() { None } else { Some(text) }
 }

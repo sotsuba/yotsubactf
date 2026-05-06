@@ -1,10 +1,10 @@
 //! Discord implementation of [`Notifier`] and the DM reminder sender.
 
+use metrics;
 use reqwest::Client;
 use serde_json::{Value, json};
 use shared::{CtfError, CtfResult as Result};
 use tracing::{error, info, warn};
-use metrics;
 
 use async_trait::async_trait;
 use shared::{CtfEvent, Notifier, Reminder};
@@ -168,7 +168,10 @@ impl Notifier for DiscordNotifier {
         let mut last_err = None;
 
         for channel_id in channel_ids {
-            if let Err(err) = self.post_to_channel(channel_id, body.clone(), "event").await {
+            if let Err(err) = self
+                .post_to_channel(channel_id, body.clone(), "event")
+                .await
+            {
                 failed += 1;
                 error!(
                     channel_id = %channel_id,
@@ -214,7 +217,10 @@ impl Notifier for DiscordNotifier {
         let mut last_err = None;
 
         for channel_id in channel_ids {
-            if let Err(err) = self.post_to_channel(channel_id, body.clone(), "result").await {
+            if let Err(err) = self
+                .post_to_channel(channel_id, body.clone(), "result")
+                .await
+            {
                 failed += 1;
                 error!(?err, %channel_id, %team_name, "Failed to send result notification");
                 last_err = Some(err);
@@ -223,7 +229,9 @@ impl Notifier for DiscordNotifier {
 
         if failed == channel_ids.len() {
             return Err(last_err.unwrap_or_else(|| {
-                CtfError::Internal("Discord result notification failed for all channels".to_string())
+                CtfError::Internal(
+                    "Discord result notification failed for all channels".to_string(),
+                )
             }));
         }
 
@@ -249,7 +257,10 @@ impl Notifier for DiscordNotifier {
         let mut last_err = None;
 
         for channel_id in channel_ids {
-            if let Err(err) = self.post_to_channel(channel_id, body.clone(), "writeup").await {
+            if let Err(err) = self
+                .post_to_channel(channel_id, body.clone(), "writeup")
+                .await
+            {
                 failed += 1;
                 error!(?err, %channel_id, writeup_id = writeup.ctftime_id, "Failed to send writeup notification");
                 last_err = Some(err);
@@ -258,7 +269,9 @@ impl Notifier for DiscordNotifier {
 
         if failed == channel_ids.len() {
             return Err(last_err.unwrap_or_else(|| {
-                CtfError::Internal("Discord writeup notification failed for all channels".to_string())
+                CtfError::Internal(
+                    "Discord writeup notification failed for all channels".to_string(),
+                )
             }));
         }
 

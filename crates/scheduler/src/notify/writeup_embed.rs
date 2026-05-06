@@ -8,6 +8,10 @@ pub fn build_writeup_notification(writeup: &Writeup) -> Value {
         .footer("YotsubaCTF • writeups")
         .timestamp(writeup.published_at.unwrap_or(writeup.created_at));
 
+    if let Some(summary) = &writeup.summary {
+        embed = embed.description(summary.clone());
+    }
+
     if let Some(category) = &writeup.category {
         embed = embed.field("📋 Category", format!("`{}`", category), true);
     }

@@ -185,6 +185,46 @@ impl WriteCtfRepository for InMemoryCtfRepository {
     async fn invalidate_upcoming_cache(&self) -> Result<()> {
         Ok(())
     }
+
+    async fn list_unenriched_events(&self, limit: i64) -> Result<Vec<CtfEvent>> {
+        let events = self.events.read().await;
+        let mut list: Vec<CtfEvent> = events
+            .values()
+            .filter(|e| e.enriched_at.is_none())
+            .cloned()
+            .collect();
+        list.sort_by_key(|e| e.start_time);
+        Ok(list.into_iter().take(limit as usize).collect())
+    }
+
+    async fn mark_event_enriched(&self, id: Uuid, description: &str) -> Result<()> {
+        let mut events = self.events.write().await;
+        if let Some(event) = events.values_mut().find(|e| e.id == Some(id)) {
+            event.description = Some(description.to_string());
+            event.enriched_at = Some(Utc::now());
+        }
+        Ok(())
+    }
+
+    async fn list_unnotified_events(&self) -> Result<Vec<CtfEvent>> {
+        let events = self.events.read().await;
+        let list: Vec<CtfEvent> = events
+            .values()
+            .filter(|e| {
+                e.notified_at.is_none() && (e.enriched_at.is_some() || e.description.is_none())
+            })
+            .cloned()
+            .collect();
+        Ok(list)
+    }
+
+    async fn mark_event_notified(&self, id: Uuid) -> Result<()> {
+        let mut events = self.events.write().await;
+        if let Some(event) = events.values_mut().find(|e| e.id == Some(id)) {
+            event.notified_at = Some(Utc::now());
+        }
+        Ok(())
+    }
 }
 
 /// A thread-safe in-memory Guild repository for unit testing.
@@ -517,6 +557,22 @@ impl WriteupRepository for InMemoryWriteupRepository {
         Ok(vec![])
     }
     async fn mark_writeup_notified(&self, _id: uuid::Uuid) -> Result<()> {
+        Ok(())
+    }
+    async fn update_writeup_summary(&self, _ctftime_id: i64, _summary: &str) -> Result<()> {
+        Ok(())
+    }
+
+    async fn list_unenriched_writeups(&self, _limit: i64) -> Result<Vec<Writeup>> {
+        Ok(vec![])
+    }
+
+    async fn mark_writeup_enriched(
+        &self,
+        _id: Uuid,
+        _summary: &str,
+        _category: Option<&str>,
+    ) -> Result<()> {
         Ok(())
     }
     async fn search_writeups(

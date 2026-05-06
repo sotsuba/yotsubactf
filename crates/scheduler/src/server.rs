@@ -25,6 +25,12 @@ pub async fn run_server(state: Arc<SharedState>, port: u16) {
             &[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
         )
         .unwrap()
+        .set_buckets_for_metric(
+            Matcher::Full("scheduler_llm_latency_seconds".to_string()),
+            // LLM inference can take longer
+            &[0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 60.0],
+        )
+        .unwrap()
         .install_recorder()
         .expect("failed to install prometheus recorder");
 

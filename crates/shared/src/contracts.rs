@@ -124,6 +124,19 @@ pub trait WriteCtfRepository: ReadCtfRepository {
 
     /// Invalidate all cached upcoming event lists.
     async fn invalidate_upcoming_cache(&self) -> crate::error::CtfResult<()>;
+
+    /// Return events that have not been enriched by the LLM yet.
+    async fn list_unenriched_events(&self, limit: i64) -> crate::error::CtfResult<Vec<CtfEvent>>;
+
+    /// Update an event with LLM enrichment data and mark it as enriched.
+    async fn mark_event_enriched(&self, id: Uuid, description: &str)
+    -> crate::error::CtfResult<()>;
+
+    /// Return events that have been enriched but not yet notified to Discord.
+    async fn list_unnotified_events(&self) -> crate::error::CtfResult<Vec<CtfEvent>>;
+
+    /// Mark an event as having been notified to Discord.
+    async fn mark_event_notified(&self, id: Uuid) -> crate::error::CtfResult<()>;
 }
 
 /// Convenience alias: the full read-write trait used by the scheduler pipeline.
@@ -355,6 +368,23 @@ pub trait WriteupRepository: Send + Sync {
     async fn list_unnotified_writeups(&self) -> crate::error::CtfResult<Vec<Writeup>>;
     /// Mark a writeup as notified.
     async fn mark_writeup_notified(&self, id: uuid::Uuid) -> crate::error::CtfResult<()>;
+    /// Update the summary for a writeup by CTFTime ID.
+    async fn update_writeup_summary(
+        &self,
+        ctftime_id: i64,
+        summary: &str,
+    ) -> crate::error::CtfResult<()>;
+
+    /// Return writeups that have not been enriched by the LLM yet.
+    async fn list_unenriched_writeups(&self, limit: i64) -> crate::error::CtfResult<Vec<Writeup>>;
+
+    /// Update a writeup with LLM summary and mark it as enriched.
+    async fn mark_writeup_enriched(
+        &self,
+        id: Uuid,
+        summary: &str,
+        category: Option<&str>,
+    ) -> crate::error::CtfResult<()>;
 
     /// Search writeups by query and optional category.
     async fn search_writeups(

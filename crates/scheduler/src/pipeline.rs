@@ -54,6 +54,7 @@ pub struct ScrapeStats {
 /// Scrape CTFTime, upsert new/changed events, notify only for new inserts.
 pub async fn run_once(
     http: &Client,
+    llm: Option<&crate::llm::GeminiClient>,
     event_repo: &(impl CtfEventRepository + ?Sized),
     guild_repo: &(impl GuildRepository + ?Sized),
     notifier: &(impl Notifier + ?Sized),
@@ -68,11 +69,12 @@ pub async fn run_once(
 
     for raw in raw_events {
         let http = http.clone();
+        let llm = llm.cloned();
         let sem = Arc::clone(&sem);
         join_set.spawn(async move {
             let _permit = sem.acquire_owned().await.expect("semaphore never closed");
             let mut ev = EnrichedEvent::new(raw);
-            enrich_event(&http, &mut ev).await;
+            enrich_event(&http, llm.as_ref(), &mut ev).await;
             ev
         });
     }
@@ -137,7 +139,7 @@ pub async fn process_events(
         warn!(?err, "Failed to invalidate upcoming cache after batch");
     }
 
-    info!(?stats, "Process cycle complete");
+    info!(?stats, "Scrape cycle complete");
     metrics::counter!(shared::metrics::SCHEDULER_EVENTS_SCRAPED).increment(stats.inserted as u64);
     Ok(stats)
 }
@@ -153,7 +155,11 @@ pub async fn process_events(
 /// Previously the code fetched the CTFTime page *twice* per event (once in
 /// `fetch_event_patch`, once inside `fetch_social_links`). This function
 /// collapses that into a single CTFTime request.
-async fn enrich_event(http: &Client, ev: &mut EnrichedEvent) {
+async fn enrich_event(
+    http: &Client,
+    _llm: Option<&crate::llm::GeminiClient>,
+    ev: &mut EnrichedEvent,
+) {
     // ── Fetch #1: CTFTime event page ──────────────────────────────────────
     // Always fetch, regardless of whether the API fields are blank: the page
     // also carries social links that the REST API never returns.

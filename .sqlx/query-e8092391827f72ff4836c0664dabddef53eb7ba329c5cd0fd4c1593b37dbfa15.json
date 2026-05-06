@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, ctftime_id, title, url, start_time, end_time,\n                   weight, format, organiser, description,\n                   social_links, created_at, updated_at, is_onsite,\n                   word_similarity(title, $1) as score\n            FROM ctf_events\n            WHERE title % $1 AND word_similarity(title, $1) >= $2\n            ORDER BY score DESC, ABS(EXTRACT(EPOCH FROM (start_time - NOW()))) ASC\n            LIMIT 1\n            ",
+  "query": "\n            SELECT id, ctftime_id, title, url, start_time, end_time,\n                   weight, format, organiser, description,\n                   social_links, created_at, updated_at, is_onsite,\n                   enriched_at, notified_at,\n                   word_similarity(title, $1) as score\n            FROM ctf_events\n            WHERE title % $1 AND word_similarity(title, $1) >= $2\n            ORDER BY score DESC, ABS(EXTRACT(EPOCH FROM (start_time - NOW()))) ASC\n            LIMIT 1\n            ",
   "describe": {
     "columns": [
       {
@@ -75,6 +75,16 @@
       },
       {
         "ordinal": 14,
+        "name": "enriched_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "notified_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
         "name": "score",
         "type_info": "Float4"
       }
@@ -100,8 +110,10 @@
       false,
       false,
       false,
+      true,
+      true,
       null
     ]
   },
-  "hash": "c0b0c6df116beddb793c77cfc0838d94fc3ff680ee54ea64b48618e7b78fdd5f"
+  "hash": "e8092391827f72ff4836c0664dabddef53eb7ba329c5cd0fd4c1593b37dbfa15"
 }

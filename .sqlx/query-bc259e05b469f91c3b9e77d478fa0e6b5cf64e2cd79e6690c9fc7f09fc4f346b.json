@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                id, ctftime_id, title, url, event_id, \n                category, event_name, published_at, created_at as \"created_at!\"\n            FROM writeups\n            ORDER BY published_at DESC NULLS LAST, created_at DESC\n            LIMIT $1\n            OFFSET $2\n            ",
+  "query": "\n            SELECT DISTINCT ON (category)\n                id, ctftime_id, title, url, summary, event_id, \n                category, event_name, published_at, created_at as \"created_at!\",\n                enriched_at, notified_at\n            FROM writeups\n            WHERE published_at >= $1 OR (published_at IS NULL AND created_at >= $1)\n            ORDER BY category, published_at DESC NULLS LAST\n            LIMIT $2\n            ",
   "describe": {
     "columns": [
       {
@@ -25,33 +25,48 @@
       },
       {
         "ordinal": 4,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "event_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "category",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "event_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "published_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "enriched_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "notified_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8",
+        "Timestamptz",
         "Int8"
       ]
     },
@@ -60,12 +75,15 @@
       false,
       false,
       false,
+      true,
       false,
+      true,
+      true,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "33977eab5fd4769a31fd9b9d8b6202421b4e374b017005e539bf62cfae7aab23"
+  "hash": "bc259e05b469f91c3b9e77d478fa0e6b5cf64e2cd79e6690c9fc7f09fc4f346b"
 }

@@ -7,32 +7,6 @@ use shared::{CtfError, CtfResult};
 use std::sync::OnceLock;
 use uuid::Uuid;
 
-const KEYWORDS: &[(&str, &str)] = &[
-    ("sql", "web"),
-    ("xss", "web"),
-    ("rce", "web"),
-    ("upload", "web"),
-    ("injection", "web"),
-    ("rsa", "crypto"),
-    ("aes", "crypto"),
-    ("cipher", "crypto"),
-    ("hash", "crypto"),
-    ("ecc", "crypto"),
-    ("overflow", "pwn"),
-    ("rop", "pwn"),
-    ("heap", "pwn"),
-    ("stack", "pwn"),
-    ("format string", "pwn"),
-    ("apk", "mobile"),
-    ("android", "mobile"),
-    ("smali", "mobile"),
-    ("memory dump", "forensics"),
-    ("wireshark", "forensics"),
-    ("pcap", "forensics"),
-    ("disk image", "forensics"),
-    ("xor", "crypto"),
-];
-
 pub async fn fetch_recent_writeups(client: &Client) -> CtfResult<Vec<Writeup>> {
     let url = "https://ctftime.org/writeups/rss/";
     let resp = client.get(url)
@@ -99,11 +73,14 @@ pub async fn fetch_recent_writeups(client: &Client) -> CtfResult<Vec<Writeup>> {
             ctftime_id,
             title,
             url,
+            summary: None,
             event_id: 0, // Placeholder, resolved in the task layer
             category,
             event_name,
             published_at,
             created_at: Utc::now(),
+            enriched_at: None,
+            notified_at: None,
         });
     }
 
@@ -111,7 +88,7 @@ pub async fn fetch_recent_writeups(client: &Client) -> CtfResult<Vec<Writeup>> {
 }
 
 fn extract_category_from_title(title: &str) -> Option<String> {
-    // 1. Try bracket extraction first (e.g. "[web] My Challenge")
+    // Try bracket extraction first (e.g. "[web] My Challenge")
     static RE: OnceLock<Regex> = OnceLock::new();
     let re = RE.get_or_init(|| Regex::new(r"\[([A-Za-z][A-Za-z0-9 _-]{1,20})\]").unwrap());
 
@@ -120,23 +97,10 @@ fn extract_category_from_title(title: &str) -> Option<String> {
         .and_then(|c| c.get(1))
         .map(|m| m.as_str().to_lowercase());
 
-    if let Some(cat) = raw {
-        return Some(standardize_category(&cat));
-    }
-
-    // 2. Fallback: Keyword matching in the title
-    let lower = title.to_lowercase();
-
-    for (pattern, target) in KEYWORDS {
-        if lower.contains(pattern) {
-            return Some(target.to_string());
-        }
-    }
-
-    None
+    raw.map(|cat| standardize_category(&cat))
 }
 
-fn standardize_category(raw: &str) -> String {
+pub fn standardize_category(raw: &str) -> String {
     const CATEGORY_MAP: &[(&str, &str)] = &[
         ("web", "web"),
         ("web-exploitation", "web"),

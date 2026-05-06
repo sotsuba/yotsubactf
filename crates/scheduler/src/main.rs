@@ -12,6 +12,8 @@
 //!   WRITEUPS_INTERVAL_SECS  default 7200  (2 hours)
 //!   DIGEST_INTERVAL_SECS    default 3600  (1 hour)
 //!   REMIND_INTERVAL_SECS    default 60    (1 minute)
+//!   ENRICH_INTERVAL_SECS    default 30    (30 seconds)
+//!   NOTIFY_INTERVAL_SECS    default 10    (10 seconds)
 //!   RUST_LOG                default "info"
 
 use anyhow::{Context, Result};
@@ -67,8 +69,10 @@ async fn main() -> Result<()> {
             "writeups" => Box::new(tasks::writeups::WriteupsTask),
             "digest" => Box::new(tasks::digest::DigestTask),
             "remind" => Box::new(tasks::remind::RemindTask),
+            "enrich" => Box::new(tasks::enrich::EnrichTask),
+            "notify" => Box::new(tasks::notify::NotifyTask),
             _ => anyhow::bail!(
-                "Unknown task: {}. Available: scrape, results, writeups, digest, remind",
+                "Unknown task: {}. Available: scrape, results, writeups, digest, remind, enrich, notify",
                 task_name
             ),
         };
@@ -84,6 +88,8 @@ async fn main() -> Result<()> {
     let writeups_interval = interval_from_env("WRITEUPS_INTERVAL_SECS", 7200);
     let digest_interval = interval_from_env("DIGEST_INTERVAL_SECS", 3600);
     let remind_interval = interval_from_env("REMIND_INTERVAL_SECS", 60);
+    let enrich_interval = interval_from_env("ENRICH_INTERVAL_SECS", 30);
+    let notify_interval = interval_from_env("NOTIFY_INTERVAL_SECS", 10);
 
     info!(
         scrape_secs = scrape_interval.as_secs(),
@@ -91,6 +97,8 @@ async fn main() -> Result<()> {
         writeups_secs = writeups_interval.as_secs(),
         digest_secs = digest_interval.as_secs(),
         remind_secs = remind_interval.as_secs(),
+        enrich_secs = enrich_interval.as_secs(),
+        notify_secs = notify_interval.as_secs(),
         "Task intervals configured"
     );
 
@@ -120,6 +128,16 @@ async fn main() -> Result<()> {
         Arc::new(tasks::remind::RemindTask),
         state.clone(),
         remind_interval,
+    ));
+    set.spawn(tasks::run_task_loop(
+        Arc::new(tasks::enrich::EnrichTask),
+        state.clone(),
+        enrich_interval,
+    ));
+    set.spawn(tasks::run_task_loop(
+        Arc::new(tasks::notify::NotifyTask),
+        state.clone(),
+        notify_interval,
     ));
 
     // Wait for shutdown or task panic
