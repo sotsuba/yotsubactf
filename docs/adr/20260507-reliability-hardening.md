@@ -1,4 +1,4 @@
-# ADR-003: Reliability Hardening (Scheduler + Gateway)
+# Reliability Hardening (Scheduler + Gateway)
 
 ## Status
 Implemented

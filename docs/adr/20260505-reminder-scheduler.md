@@ -1,4 +1,4 @@
-# ADR-001: Reminder Scheduler — Polling vs Event-Driven
+# Reminder Scheduler — Polling vs Event-Driven
 
 ## Status
 Proposed

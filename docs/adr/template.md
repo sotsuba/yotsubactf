@@ -1,4 +1,4 @@
-# ADR-XXX: <Title>
+# <Title>
 
 ## Status
 <!-- Proposed | Accepted | Implemented | Deprecated -->
