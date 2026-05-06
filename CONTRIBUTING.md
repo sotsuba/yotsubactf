@@ -144,12 +144,13 @@ The `commit-msg` hook will reject non-conforming messages.
 ```
 <type>(<scope>): <description>
 
-Types: feat, fix, perf, refactor, docs, ci, chore, style, test
+Types: feat, fix, perf, refactor, docs, ci, chore, style, test, infra
 Scope: gateway, scheduler, db, shared, migrations, monitoring (optional)
 
 Examples:
   feat(gateway): add /leaderboard pagination
   fix(reminder): handle timezone edge case in set_timer
+  infra(monitoring): add node-exporter to prod compose
   ci: skip workflow on doc-only changes
 ```
 

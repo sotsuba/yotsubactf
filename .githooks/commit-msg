@@ -11,7 +11,7 @@ if echo "$MSG" | grep -qE "^(Merge|fixup!|squash!)"; then
     exit 0
 fi
 
-PATTERN="^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert)(\(.+\))?(!)?: .{1,100}"
+PATTERN="^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert|infra)(\(.+\))?(!)?: .{1,100}"
 
 if ! echo "$MSG" | grep -qE "$PATTERN"; then
     log_header "commit-msg" "Conventional Commits check"
@@ -20,7 +20,7 @@ if ! echo "$MSG" | grep -qE "$PATTERN"; then
     echo ""
     echo "  ${BOLD}${WHITE}Format:${RESET} <type>(<scope>): <description>"
     echo ""
-    echo "  ${BOLD}${WHITE}Types:${RESET}  feat fix chore docs style refactor perf test ci build revert"
+    echo "  ${BOLD}${WHITE}Types:${RESET}  feat fix chore docs style refactor perf test ci build revert infra"
     echo ""
     echo "  ${BOLD}${WHITE}Example:${RESET}"
     echo "    feat(reminder): add notify_channel_id option"
