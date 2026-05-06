@@ -1,4 +1,4 @@
-# ADR-002: Admin Roles (RBAC)
+# Admin Roles (RBAC)
 
 ## Status
 Implemented
