@@ -2,7 +2,7 @@ groups:
   - name: ctfbot_recording_rules
     rules:
       - record: job:gateway_commands_rate5m:sum
-        expr: sum(rate(gateway_commands_total[5m])) by (command, result)
+        expr: sum(rate(gateway_commands_total[5m])) by (command, success)
 
       - record: job:scheduler_tasks_rate5m:sum
         expr: sum(rate(scheduler_tasks_total[5m])) by (task, result)
