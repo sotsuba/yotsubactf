@@ -59,6 +59,26 @@ impl CtfError {
             CtfError::Internal(m) => CtfEmbed::error("Internal Error").description(m),
         }
     }
+
+    pub fn is_transient(&self) -> bool {
+        match self {
+            CtfError::RateLimit { .. } => true,
+            CtfError::Timeout => true,
+            CtfError::Database(_) => true,
+            CtfError::ExternalApi { status, .. } => {
+                *status == 0 || *status == 429 || (*status >= 500 && *status <= 599)
+            }
+            CtfError::Internal(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_permanent(&self) -> bool {
+        matches!(
+            self,
+            CtfError::NotFound(_) | CtfError::PermissionDenied(_) | CtfError::InvalidInput(_)
+        ) || matches!(self, CtfError::ExternalApi { status, .. } if *status >= 400 && *status < 500 && *status != 429)
+    }
 }
 
 pub trait CtfErrorContext<T> {

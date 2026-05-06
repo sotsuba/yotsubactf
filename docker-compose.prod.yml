@@ -23,6 +23,7 @@ services:
       - "127.0.0.1:8085:8085"
 
   db-backup:
+    profiles: ["backup"]
     build:
       context: .
       dockerfile: scripts/backup/Dockerfile
@@ -43,6 +44,7 @@ services:
       - backend
 
   prometheus:
+    profiles: ["monitoring"]
     image: prom/prometheus:v3.1.0
     restart: unless-stopped
     command:
@@ -57,6 +59,7 @@ services:
       - backend
 
   alertmanager:
+    profiles: ["monitoring"]
     build:
       context: ./monitoring/alertmanager
       dockerfile: Dockerfile
@@ -74,6 +77,7 @@ services:
       - monitoring
 
   grafana:
+    profiles: ["monitoring"]
     image: grafana/grafana:11.4.0
     restart: unless-stopped
     environment:
@@ -88,6 +92,7 @@ services:
       - monitoring
 
   loki:
+    profiles: ["monitoring"]
     image: grafana/loki:3.3.2
     restart: unless-stopped
     volumes:
@@ -99,6 +104,7 @@ services:
       - monitoring
 
   promtail:
+    profiles: ["monitoring"]
     image: grafana/promtail:3.3.2
     restart: unless-stopped
     volumes:
@@ -110,6 +116,7 @@ services:
       - monitoring
 
   node-exporter:
+    profiles: ["monitoring"]
     image: quay.io/prometheus/node-exporter:latest
     restart: unless-stopped
     command:
@@ -124,6 +131,7 @@ services:
       - backend
 
   redis-exporter:
+    profiles: ["monitoring"]
     image: oliver006/redis_exporter:latest
     restart: unless-stopped
     environment:
@@ -132,6 +140,7 @@ services:
       - backend
 
   postgres-exporter:
+    profiles: ["monitoring"]
     image: prometheuscommunity/postgres-exporter:latest
     restart: unless-stopped
     environment:
@@ -141,6 +150,7 @@ services:
 
 
   metabase:
+    profiles: ["monitoring"]
     image: metabase/metabase:v0.51.1
     restart: unless-stopped
     ports:

@@ -28,36 +28,50 @@ pub async fn request_with_retry(
     let mut backoff = std::time::Duration::from_secs(2);
 
     loop {
-        let resp = client
+        let resp_result = client
             .get(url)
             .header("Accept", "application/json")
             .send()
-            .await
-            .map_err(|e| {
-                if e.is_timeout() {
+            .await;
+
+        match resp_result {
+            Ok(resp) => {
+                let status = resp.status();
+
+                // Retry on 429 (Rate Limit) and 5xx (Server Error)
+                if (status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error())
+                    && retries < max_retries
+                {
+                    tracing::warn!(?status, %url, ?backoff, "CTFtime API error, retrying...");
+                    tokio::time::sleep(backoff).await;
+                    retries += 1;
+                    backoff *= 2;
+                    continue;
+                }
+
+                return Ok(resp);
+            }
+            Err(err) => {
+                let ctf_err = if err.is_timeout() {
                     CtfError::Timeout
                 } else {
                     CtfError::ExternalApi {
                         status: 0,
-                        message: format!("Request failed: {e}"),
+                        message: format!("Request failed: {err}"),
                     }
+                };
+
+                if ctf_err.is_transient() && retries < max_retries {
+                    tracing::warn!(%url, ?backoff, "CTFtime request failed, retrying...");
+                    tokio::time::sleep(backoff).await;
+                    retries += 1;
+                    backoff *= 2;
+                    continue;
                 }
-            })?;
 
-        let status = resp.status();
-
-        // Retry on 429 (Rate Limit) and 5xx (Server Error)
-        if (status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error())
-            && retries < max_retries
-        {
-            tracing::warn!(?status, %url, ?backoff, "CTFtime API error, retrying...");
-            tokio::time::sleep(backoff).await;
-            retries += 1;
-            backoff *= 2;
-            continue;
+                return Err(ctf_err);
+            }
         }
-
-        return Ok(resp);
     }
 }
 

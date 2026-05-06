@@ -39,6 +39,25 @@ make db-up
 make db-migrate
 ```
 
+### Docker Compose Structure
+
+We use a multi-file Docker Compose setup to manage different environments:
+
+- **`docker-compose.yml`**: Base configuration (Services, Networks, Volumes).
+- **`docker-compose.override.yml`**: Development overrides (Ports, debug logging, volume mounts). Loaded automatically by `docker compose up`.
+- **`docker-compose.prod.yml`**: Production overrides (Restart policies, security settings).
+
+To run with monitoring enabled in development:
+```bash
+docker compose --profile monitoring up -d
+```
+
+To simulate a production environment:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+
 ### Running the bot locally
 
 ```bash
