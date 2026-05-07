@@ -5,6 +5,9 @@ on:
   push:
     paths: ['Cargo.lock']
 
+permissions:
+  contents: read
+
 jobs:
   audit:
     runs-on: ubuntu-latest
