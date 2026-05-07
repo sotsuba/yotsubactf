@@ -34,7 +34,7 @@ reqwest-retry      = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
 chrono             = { workspace = true }
-html_scraper       = { package = "scraper", version = "0.19" }
+html_scraper       = { package = "scraper", version = "0.26" }
 rss                = "2.0"
 uuid               = { workspace = true }
 twilight-model     = { workspace = true }

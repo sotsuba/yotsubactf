@@ -11,7 +11,7 @@ edition = "2024"
 
 [workspace.dependencies]
 tokio              = { version = "1", features = ["full"] }
-sqlx               = { version = "0.8.6", features = ["postgres", "runtime-tokio", "chrono", "uuid"] }
+sqlx               = { version = "0.8.6", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-aws-lc-rs", "chrono", "uuid", "macros", "migrate"] }
 reqwest            = { version = "0.13", features = ["json", "rustls"] }
 reqwest-middleware = { version = "0.5.1", features = ["json"] }
 reqwest-retry      = "0.9"
