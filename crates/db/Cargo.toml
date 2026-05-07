@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 shared = { path = "../shared" }
-sqlx   = { workspace = true, features = ["postgres", "uuid", "chrono", "json"] }
+sqlx   = { workspace = true, default-features = false, features = ["postgres", "tls-rustls-aws-lc-rs", "uuid", "chrono", "json"] }
 redis  = { workspace = true }
 chrono = { workspace = true }
 uuid   = { workspace = true }

@@ -19,65 +19,20 @@ pub struct TeamSearchResult {
     pub rating: Option<f64>,
     pub aliases: Vec<String>,
 }
-pub async fn request_with_retry(
-    client: &reqwest::Client,
-    url: &str,
-) -> CtfResult<reqwest::Response> {
-    let mut retries = 0;
-    let max_retries = 3;
-    let mut backoff = std::time::Duration::from_secs(2);
-
-    loop {
-        let resp_result = client
-            .get(url)
-            .header("Accept", "application/json")
-            .send()
-            .await;
-
-        match resp_result {
-            Ok(resp) => {
-                let status = resp.status();
-
-                // Retry on 429 (Rate Limit) and 5xx (Server Error)
-                if (status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error())
-                    && retries < max_retries
-                {
-                    tracing::warn!(?status, %url, ?backoff, "CTFtime API error, retrying...");
-                    tokio::time::sleep(backoff).await;
-                    retries += 1;
-                    backoff *= 2;
-                    continue;
-                }
-
-                return Ok(resp);
-            }
-            Err(err) => {
-                let ctf_err = if err.is_timeout() {
-                    CtfError::Timeout
-                } else {
-                    CtfError::ExternalApi {
-                        status: 0,
-                        message: format!("Request failed: {err}"),
-                    }
-                };
-
-                if ctf_err.is_transient() && retries < max_retries {
-                    tracing::warn!(%url, ?backoff, "CTFtime request failed, retrying...");
-                    tokio::time::sleep(backoff).await;
-                    retries += 1;
-                    backoff *= 2;
-                    continue;
-                }
-
-                return Err(ctf_err);
-            }
-        }
-    }
-}
-
-pub async fn fetch_top(client: &reqwest::Client, year: i32) -> CtfResult<Vec<(u32, TeamEntry)>> {
+pub async fn fetch_top(
+    client: &reqwest_middleware::ClientWithMiddleware,
+    year: i32,
+) -> CtfResult<Vec<(u32, TeamEntry)>> {
     let url = format!("{}/top/{}/", BASE, year);
-    let resp = request_with_retry(client, &url).await?;
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|err| CtfError::ExternalApi {
+            status: 0,
+            message: format!("Request failed: {err}"),
+        })?;
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -163,7 +118,7 @@ pub async fn fetch_top(client: &reqwest::Client, year: i32) -> CtfResult<Vec<(u3
 }
 
 pub async fn search_team(
-    client: &reqwest::Client,
+    client: &reqwest_middleware::ClientWithMiddleware,
     query: &str,
 ) -> CtfResult<Vec<TeamSearchResult>> {
     let query = query.trim();
@@ -180,7 +135,15 @@ pub async fn search_team(
     }
 
     let url = format!("{}/teams/?search={}", BASE, urlencoding::encode(query));
-    let resp = request_with_retry(client, &url).await?;
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|err| CtfError::ExternalApi {
+            status: 0,
+            message: format!("Request failed: {err}"),
+        })?;
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -197,9 +160,20 @@ pub async fn search_team(
     })
 }
 
-pub async fn get_team_name(client: &reqwest::Client, team_id: i64) -> CtfResult<Option<String>> {
+pub async fn get_team_name(
+    client: &reqwest_middleware::ClientWithMiddleware,
+    team_id: i64,
+) -> CtfResult<Option<String>> {
     let url = format!("{}/teams/{}/", BASE, team_id);
-    let resp = request_with_retry(client, &url).await?;
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|err| CtfError::ExternalApi {
+            status: 0,
+            message: format!("Request failed: {err}"),
+        })?;
 
     if resp.status() == reqwest::StatusCode::NOT_FOUND {
         return Ok(None);

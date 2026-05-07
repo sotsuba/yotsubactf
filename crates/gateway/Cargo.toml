@@ -21,6 +21,8 @@ twilight-interactions = { workspace = true }
 twilight-util         = { workspace = true }
 async-trait  = { workspace = true }
 reqwest      = { workspace = true }
+reqwest-middleware = { workspace = true }
+reqwest-retry      = { workspace = true }
 urlencoding  = "2"
 serde        = { workspace = true, features = ["derive"] }
 moka         = { workspace = true }

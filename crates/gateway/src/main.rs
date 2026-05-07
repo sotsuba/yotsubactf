@@ -70,10 +70,22 @@ async fn main() -> Result<()> {
 
     let bot_email =
         env::var("BOT_CONTACT_EMAIL").unwrap_or_else(|_| "admin@example.com".to_string());
-    let http_api = reqwest::Client::builder()
+    let raw_http_api = reqwest::Client::builder()
         .user_agent(shared::build_user_agent(&bot_email))
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
+
+    let retry_policy =
+        reqwest_retry::policies::ExponentialBackoff::builder().build_with_max_retries(3);
+    let http_api = reqwest_middleware::ClientBuilder::new(raw_http_api)
+        .with(shared::resilience::CircuitBreakerMiddleware::new(
+            5,
+            Duration::from_secs(30),
+        ))
+        .with(reqwest_retry::RetryTransientMiddleware::new_with_policy(
+            retry_policy,
+        ))
+        .build();
 
     let redis_url = env::var("REDIS_URL").ok();
     let redis_client = redis_url.and_then(|url| db::redis::Client::open(url).ok());
