@@ -319,7 +319,7 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("input contains invalid characters")
-                 || err.to_string().contains("premature end of input")
+                || err.to_string().contains("premature end of input")
         );
     }
 }
