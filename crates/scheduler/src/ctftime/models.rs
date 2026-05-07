@@ -147,3 +147,177 @@ impl TryFrom<EnrichedEvent> for CtfEvent {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use shared::SocialPlatform;
+
+    fn sample_raw_event() -> RawCtftimeEvent {
+        RawCtftimeEvent {
+            ctftime_id: 1337,
+            title: " ".to_string(),
+            url: "https://ctftime.org/event/1337".to_string(),
+            description: "".to_string(),
+            start: "2026-01-01T10:00:00Z".to_string(),
+            finish: "2026-01-01T12:00:00Z".to_string(),
+            weight: 0.0,
+            format: " ".to_string(),
+            onsite: false,
+            organizers: vec![RawOrganizer {
+                id: 1,
+                name: "Team Yotsuba".to_string(),
+            }],
+        }
+    }
+
+    #[test]
+    fn apply_patch_only_fills_blank_fields_and_merges_links() {
+        let mut enriched = EnrichedEvent::new(sample_raw_event());
+        enriched.social_links = vec![SocialLink {
+            platform: SocialPlatform::Discord,
+            url: "https://discord.gg/existing".to_string(),
+        }];
+        let patch = HtmlEventPatch {
+            title: Some("Patched title".to_string()),
+            description: Some("Patched description".to_string()),
+            format: Some("Jeopardy".to_string()),
+            weight: Some(42.0),
+            is_onsite: Some(true),
+            social_links: vec![
+                SocialLink {
+                    platform: SocialPlatform::Telegram,
+                    url: "https://discord.gg/existing".to_string(),
+                },
+                SocialLink {
+                    platform: SocialPlatform::Matrix,
+                    url: "https://matrix.to/#/!room:example.org".to_string(),
+                },
+            ],
+        };
+
+        enriched.apply_patch(patch);
+
+        assert_eq!(enriched.raw.title, "Patched title");
+        assert_eq!(enriched.raw.description, "Patched description");
+        assert_eq!(enriched.raw.format, "Jeopardy");
+        assert_eq!(enriched.raw.weight, 42.0);
+        assert!(enriched.raw.onsite);
+        assert_eq!(enriched.social_links.len(), 2);
+        assert_eq!(
+            enriched.social_links[0].url,
+            "https://discord.gg/existing".to_string()
+        );
+        assert_eq!(
+            enriched.social_links[1].url,
+            "https://matrix.to/#/!room:example.org".to_string()
+        );
+    }
+
+    #[test]
+    fn apply_patch_keeps_existing_non_blank_and_positive_weight() {
+        let mut raw = sample_raw_event();
+        raw.title = "Original title".to_string();
+        raw.description = "Original description".to_string();
+        raw.format = "Attack-Defense".to_string();
+        raw.weight = 99.0;
+        let mut enriched = EnrichedEvent::new(raw);
+
+        enriched.apply_patch(HtmlEventPatch {
+            title: Some("Patched title".to_string()),
+            description: Some("Patched description".to_string()),
+            format: Some("Jeopardy".to_string()),
+            weight: Some(42.0),
+            is_onsite: Some(true),
+            social_links: vec![],
+        });
+
+        assert_eq!(enriched.raw.title, "Original title");
+        assert_eq!(enriched.raw.description, "Original description");
+        assert_eq!(enriched.raw.format, "Attack-Defense");
+        assert_eq!(enriched.raw.weight, 99.0);
+        assert!(enriched.raw.onsite);
+    }
+
+    #[test]
+    fn merge_social_links_deduplicates_by_url() {
+        let mut enriched = EnrichedEvent::new(sample_raw_event());
+        enriched.social_links = vec![SocialLink {
+            platform: SocialPlatform::Discord,
+            url: "https://discord.gg/dup".to_string(),
+        }];
+
+        enriched.merge_social_links(vec![
+            SocialLink {
+                platform: SocialPlatform::Telegram,
+                url: "https://discord.gg/dup".to_string(),
+            },
+            SocialLink {
+                platform: SocialPlatform::Slack,
+                url: "https://slack.com/invite/new".to_string(),
+            },
+        ]);
+
+        assert_eq!(enriched.social_links.len(), 2);
+        assert_eq!(enriched.social_links[0].platform, SocialPlatform::Discord);
+        assert_eq!(enriched.social_links[1].platform, SocialPlatform::Slack);
+    }
+
+    #[test]
+    fn set_social_links_replaces_existing_values() {
+        let mut enriched = EnrichedEvent::new(sample_raw_event());
+        enriched.social_links = vec![SocialLink {
+            platform: SocialPlatform::Discord,
+            url: "https://discord.gg/old".to_string(),
+        }];
+
+        enriched.set_social_links(vec![SocialLink {
+            platform: SocialPlatform::Matrix,
+            url: "https://matrix.to/#/!new:example.org".to_string(),
+        }]);
+
+        assert_eq!(enriched.social_links.len(), 1);
+        assert_eq!(enriched.social_links[0].platform, SocialPlatform::Matrix);
+    }
+
+    #[test]
+    fn try_from_enriched_event_maps_fields() {
+        let mut enriched = EnrichedEvent::new(sample_raw_event());
+        enriched.apply_patch(HtmlEventPatch {
+            title: Some("Mapped title".to_string()),
+            description: Some("Mapped description".to_string()),
+            format: Some("Jeopardy".to_string()),
+            weight: Some(25.0),
+            is_onsite: Some(true),
+            social_links: vec![SocialLink {
+                platform: SocialPlatform::Discord,
+                url: "https://discord.gg/yotsuba".to_string(),
+            }],
+        });
+
+        let event = CtfEvent::try_from(enriched).expect("conversion should succeed");
+        assert_eq!(event.ctftime_id, 1337);
+        assert_eq!(event.title, "Mapped title");
+        assert_eq!(event.description.as_deref(), Some("Mapped description"));
+        assert_eq!(event.format.as_deref(), Some("Jeopardy"));
+        assert_eq!(event.weight, Some(25.0));
+        assert_eq!(event.organiser.as_deref(), Some("Team Yotsuba"));
+        assert!(event.is_onsite);
+        assert_eq!(event.start_time.to_rfc3339(), "2026-01-01T10:00:00+00:00");
+        assert_eq!(event.end_time.to_rfc3339(), "2026-01-01T12:00:00+00:00");
+        assert_eq!(event.social_links.len(), 1);
+    }
+
+    #[test]
+    fn try_from_enriched_event_fails_on_invalid_datetime() {
+        let mut raw = sample_raw_event();
+        raw.start = "not-a-date".to_string();
+        let enriched = EnrichedEvent::new(raw);
+
+        let err = CtfEvent::try_from(enriched).expect_err("invalid timestamp should fail");
+        assert!(
+            err.to_string().contains("input contains invalid characters")
+                || err.to_string().contains("premature end of input")
+        );
+    }
+}
