@@ -28,7 +28,7 @@
 
 use std::sync::Arc;
 
-use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware as Client;
 use shared::CtfResult;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;

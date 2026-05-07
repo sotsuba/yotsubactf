@@ -1,7 +1,7 @@
 use crate::SharedState;
 use async_trait::async_trait;
 use html_scraper::Html;
-use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware as Client;
 use shared::CtfResult;
 use tracing::info;
 

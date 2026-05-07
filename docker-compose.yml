@@ -39,6 +39,8 @@ services:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
       HEALTH_PORT: 8085
+    dns_opt:
+      - ndots:1
     networks:
       backend:
         aliases:
@@ -61,6 +63,8 @@ services:
       DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
       BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
       HEALTH_PORT: 8085
+    dns_opt:
+      - ndots:1
     networks:
       backend:
         aliases:

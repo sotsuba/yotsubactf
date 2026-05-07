@@ -2,10 +2,8 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tracing::warn;
-
-use reqwest::Client;
 use tokio::sync::Mutex;
+use tracing::warn;
 
 const GEMINI_API_BASE: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 const MAX_SUMMARY_CHARS: usize = 400;
@@ -24,7 +22,7 @@ struct GatedState {
 
 #[derive(Debug, Clone)]
 pub struct GeminiClient {
-    http: Client,
+    http: reqwest_middleware::ClientWithMiddleware,
     api_key: String,
     model: String,
     timeout: Duration,
@@ -34,7 +32,7 @@ pub struct GeminiClient {
 
 impl GeminiClient {
     pub fn new(
-        http: Client,
+        http: reqwest_middleware::ClientWithMiddleware,
         api_key: String,
         model: String,
         timeout: Duration,
@@ -166,41 +164,27 @@ impl GeminiClient {
             .increment(1);
 
         let response = tokio::time::timeout(timeout, async {
-            let mut attempt = 0;
-            loop {
-                let resp = self
-                    .http
-                    .post(&url)
-                    .header("x-goog-api-key", &self.api_key)
-                    .json(&payload)
-                    .send()
-                    .await
-                    .map_err(|e| format!("request failed: {e}"))?;
+            let resp = self
+                .http
+                .post(&url)
+                .header("x-goog-api-key", &self.api_key)
+                .json(&payload)
+                .send()
+                .await
+                .map_err(|e| format!("request failed: {e}"))?;
 
-                let status = resp.status();
-                if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-                    if gated {
-                        self.on_rate_limited().await;
-                    }
-                    if attempt == 0 {
-                        let wait_for =
-                            retry_after_delay(&resp).unwrap_or_else(|| Duration::from_millis(600));
-                        warn!(op, ?wait_for, "Gemini rate limited; retrying once");
-                        tokio::time::sleep(wait_for).await;
-                        attempt += 1;
-                        continue;
-                    }
-                }
-
-                let resp = resp
-                    .error_for_status()
-                    .map_err(|e| format!("unexpected status: {e}"))?;
-
-                return resp
-                    .json::<GeminiResponse>()
-                    .await
-                    .map_err(|e| format!("invalid response: {e}"));
+            let status = resp.status();
+            if status == reqwest::StatusCode::TOO_MANY_REQUESTS && gated {
+                self.on_rate_limited().await;
             }
+
+            let resp = resp
+                .error_for_status()
+                .map_err(|e| format!("unexpected status: {e}"))?;
+
+            resp.json::<GeminiResponse>()
+                .await
+                .map_err(|e| format!("invalid response: {e}"))
         })
         .await;
 
@@ -284,13 +268,6 @@ fn normalize_line(text: &str) -> String {
             }
         })
         .unwrap_or_default()
-}
-
-fn retry_after_delay(resp: &reqwest::Response) -> Option<Duration> {
-    let header = resp.headers().get(reqwest::header::RETRY_AFTER)?;
-    let header = header.to_str().ok()?;
-    let seconds: u64 = header.parse().ok()?;
-    Some(Duration::from_secs(seconds))
 }
 
 impl GeminiClient {
@@ -419,8 +396,9 @@ mod tests {
 
     #[tokio::test]
     async fn adaptive_interval_increases_and_decays() {
+        let http = reqwest_middleware::ClientBuilder::new(reqwest::Client::new()).build();
         let client = GeminiClient::new(
-            Client::new(),
+            http,
             "key".to_string(),
             "model".to_string(),
             Duration::from_secs(1),
@@ -458,8 +436,9 @@ mod tests {
 
         let model =
             std::env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.0-flash".to_string());
+        let http = reqwest_middleware::ClientBuilder::new(reqwest::Client::new()).build();
         let client = GeminiClient::new(
-            Client::new(),
+            http,
             api_key.unwrap(),
             model,
             Duration::from_secs(20),

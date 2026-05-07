@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use regex::Regex;
-use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware as Client;
 use rss::Channel;
 use shared::Writeup;
 use shared::{CtfError, CtfResult};

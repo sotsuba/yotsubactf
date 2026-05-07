@@ -26,7 +26,7 @@ use tracing::warn;
 
 pub struct SharedState {
     pub pool: PgPool,
-    pub http: reqwest::Client,
+    pub http: reqwest_middleware::ClientWithMiddleware,
     pub llm: Option<llm::GeminiClient>,
     pub notifier: Arc<dyn Notifier>,
     pub event_repo: Arc<dyn WriteCtfRepository>,
@@ -76,11 +76,23 @@ impl SharedState {
         let redis_url = env::var("REDIS_URL").ok();
         let redis_client = redis_url.and_then(|url| db::redis::Client::open(url).ok());
 
-        let http = reqwest::Client::builder()
+        let raw_http = reqwest::Client::builder()
             .user_agent(shared::build_user_agent(&bot_email))
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .context("Failed to build HTTP client")?;
+            .context("Failed to build raw HTTP client")?;
+
+        let retry_policy =
+            reqwest_retry::policies::ExponentialBackoff::builder().build_with_max_retries(3);
+        let http = reqwest_middleware::ClientBuilder::new(raw_http)
+            .with(shared::resilience::CircuitBreakerMiddleware::new(
+                5,
+                Duration::from_secs(30),
+            ))
+            .with(reqwest_retry::RetryTransientMiddleware::new_with_policy(
+                retry_policy,
+            ))
+            .build();
 
         let notifier = Arc::new(DiscordNotifier::new(
             http.clone(),
@@ -140,7 +152,7 @@ impl SharedState {
         };
 
         let pool = db::PgPool::connect_lazy("postgres://localhost/unused").unwrap();
-        let http = reqwest::Client::new();
+        let http = reqwest_middleware::ClientBuilder::new(reqwest::Client::new()).build();
 
         Self {
             pool,

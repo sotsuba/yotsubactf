@@ -26,7 +26,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use html_scraper::{Html, Selector};
-use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware as Client;
 use shared::{CtfError, CtfResult};
 
 use shared::{SocialLink, SocialPlatform};
