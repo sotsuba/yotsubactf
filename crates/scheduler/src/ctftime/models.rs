@@ -186,7 +186,7 @@ mod tests {
             is_onsite: Some(true),
             social_links: vec![
                 SocialLink {
-                    platform: SocialPlatform::Telegram,
+                    platform: SocialPlatform::Discord,
                     url: "https://discord.gg/existing".to_string(),
                 },
                 SocialLink {
