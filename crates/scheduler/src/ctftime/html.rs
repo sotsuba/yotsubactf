@@ -98,27 +98,101 @@ pub async fn fetch_event_patch(client: &Client, ctftime_id: i64) -> CtfResult<Ht
     })
 }
 
-/// Fetch social/community invite links from the CTF's own website.
+/// Fetch social/community invite links from the CTF's own website using a deep search strategy.
 ///
-/// This is a **separate** fetch from the CTFTime page. Call it after
-/// [`fetch_event_patch`] to collect links that may not appear on CTFTime.
+/// This fetches the root page, identifies internal links (same domain), and crawls them
+/// to find additional social links (e.g. on /contact, /rules, or /discord).
 ///
-/// Returns an empty vec (and logs nothing) if the URL is absent, looks
-/// unsafe, or the fetch fails — this is a best-effort enrichment.
+/// Limits:
+/// - Max 15 unique internal subpages per event.
+/// - Only Level 1 links (main page -> subpage).
+/// - Concurrently fetches subpages to speed up enrichment.
 pub async fn fetch_external_social_links(client: &Client, ctf_url: &str) -> Vec<SocialLink> {
     if ctf_url.is_empty() || !is_safe_external_url(ctf_url) {
         return vec![];
     }
 
+    let base_url = match reqwest::Url::parse(ctf_url) {
+        Ok(url) => url,
+        Err(_) => return vec![],
+    };
+
     let mut found: HashMap<String, SocialLink> = HashMap::new();
+    let mut internal_urls = Vec::new();
+
+    // ── Level 0: Main Page ────────────────────────────────────────────────
     if let Ok(html) = fetch_html(client, ctf_url).await {
         let doc = Html::parse_document(&html);
         extract_social_links_from_document(&doc, &mut found);
+        internal_urls = extract_internal_links(&doc, &base_url);
+    }
+
+    // ── Level 1: Subpages (Deep Search) ───────────────────────────────────
+    // Limit to 15 subpages to avoid hammering the host or taking too long.
+    let subpages_to_fetch: Vec<_> = internal_urls.into_iter().take(15).collect();
+    if !subpages_to_fetch.is_empty() {
+        let mut join_set = tokio::task::JoinSet::new();
+
+        for url in subpages_to_fetch {
+            let client = client.clone();
+            join_set.spawn(async move {
+                if let Ok(html) = fetch_html(&client, url.as_str()).await {
+                    let doc = Html::parse_document(&html);
+                    let mut local_found = HashMap::new();
+                    extract_social_links_from_document(&doc, &mut local_found);
+                    return Some(local_found);
+                }
+                None
+            });
+        }
+
+        while let Some(res) = join_set.join_next().await {
+            if let Ok(Some(local_found)) = res {
+                for (url, link) in local_found {
+                    found.entry(url).or_insert(link);
+                }
+            }
+        }
     }
 
     let mut links: Vec<SocialLink> = found.into_values().collect();
     links.sort_by(|a, b| a.platform.cmp(&b.platform));
     links
+}
+
+fn extract_internal_links(document: &Html, base_url: &reqwest::Url) -> Vec<reqwest::Url> {
+    let mut internal = Vec::new();
+
+    for el in document.select(sel_a_href()) {
+        if let Some(href) = el.value().attr("href") {
+            // Join with base to handle relative URLs
+            if let Ok(resolved) = base_url.join(href) {
+                // Same domain + same scheme (don't jump from https to http if possible)
+                if resolved.domain() == base_url.domain()
+                    && resolved.scheme() == base_url.scheme()
+                    && is_safe_external_url(resolved.as_str())
+                {
+                    // Normalize: remove fragments and query strings for crawler efficiency
+                    let mut normalized = resolved.clone();
+                    normalized.set_fragment(None);
+                    normalized.set_query(None);
+
+                    // Skip the base URL itself
+                    if normalized.as_str().trim_end_matches('/')
+                        == base_url.as_str().trim_end_matches('/')
+                    {
+                        continue;
+                    }
+
+                    internal.push(normalized);
+                }
+            }
+        }
+    }
+
+    internal.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+    internal.dedup();
+    internal
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -417,5 +491,33 @@ mod tests {
         // Binary extensions
         assert!(!is_safe_external_url("https://ctf.com/rules.pdf"));
         assert!(!is_safe_external_url("https://ctf.com/assets.zip"));
+    }
+
+    #[test]
+    fn test_extract_internal_links() {
+        let base = reqwest::Url::parse("https://ctf.example.com").unwrap();
+        let html = r#"
+            <html>
+                <body>
+                    <a href="/rules">Rules</a>
+                    <a href="https://ctf.example.com/contact">Contact</a>
+                    <a href="https://other.com/external">External</a>
+                    <a href="https://ctf.example.com/rules#fragment">Rules with fragment</a>
+                    <a href="/rules?q=1">Rules with query</a>
+                    <a href="https://ctf.example.com/">Home</a>
+                    <a href="javascript:void(0)">JS</a>
+                </body>
+            </html>
+        "#;
+        let doc = Html::parse_document(html);
+        let internal = extract_internal_links(&doc, &base);
+
+        let paths: Vec<_> = internal.iter().map(|u| u.path()).collect();
+        // Should have /rules and /contact.
+        // /rules?q=1 and /rules#fragment should normalize to /rules and be deduped.
+        // Home (/) should be skipped as it matches base.
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(&"/rules"));
+        assert!(paths.contains(&"/contact"));
     }
 }

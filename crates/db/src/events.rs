@@ -206,6 +206,15 @@ impl ReadCtfRepository for PostgresCtfRepository {
     }
 
     async fn get_by_title_fuzzy(&self, query: &str) -> Result<Option<CtfEvent>> {
+        // If query is numeric, prioritize ctftime_id match
+        if let Ok(id) = query.parse::<i64>() {
+            if let Some(event) = self.get_by_ctftime_id(id).await? {
+                if event.end_time > Utc::now() {
+                    return Ok(Some(event));
+                }
+            }
+        }
+
         let pattern = format!("%{query}%");
 
         let row = sqlx::query_as::<_, DbCtfEvent>(
@@ -301,6 +310,13 @@ impl ReadCtfRepository for PostgresCtfRepository {
     }
 
     async fn get_all_by_title_fuzzy(&self, query: &str) -> Result<Option<CtfEvent>> {
+        // If query is numeric, prioritize ctftime_id match
+        if let Ok(id) = query.parse::<i64>() {
+            if let Some(event) = self.get_by_ctftime_id(id).await? {
+                return Ok(Some(event));
+            }
+        }
+
         let pattern = format!("%{query}%");
 
         let row = sqlx::query_as::<_, DbCtfEvent>(

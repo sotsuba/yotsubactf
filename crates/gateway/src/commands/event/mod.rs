@@ -95,7 +95,7 @@ impl SlashCommand for EventCommand {
             .option(
                 SubCommandBuilder::new("countdown", "Countdown to a CTF")
                     .option(
-                        StringBuilder::new("query", "CTF name")
+                        StringBuilder::new("query", "CTF name or CTFTime ID")
                             .required(true)
                             .build(),
                     )
@@ -104,7 +104,7 @@ impl SlashCommand for EventCommand {
             .option(
                 SubCommandBuilder::new("info", "Details about a CTF")
                     .option(
-                        StringBuilder::new("query", "CTF name")
+                        StringBuilder::new("query", "CTF name or CTFTime ID")
                             .required(true)
                             .build(),
                     )
