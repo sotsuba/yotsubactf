@@ -315,9 +315,11 @@ mod tests {
         let enriched = EnrichedEvent::new(raw);
 
         let err = CtfEvent::try_from(enriched).expect_err("invalid timestamp should fail");
+        
         assert!(
-            err.to_string().contains("input contains invalid characters")
-                || err.to_string().contains("premature end of input")
+            err.to_string()
+                .contains("input contains invalid characters")
+                 || err.to_string().contains("premature end of input")
         );
     }
 }
