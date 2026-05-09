@@ -29,6 +29,8 @@ jobs:
   check:
     name: Check & Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -56,6 +58,8 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     needs: check
+    permissions:
+      contents: read
 
     services:
       postgres:

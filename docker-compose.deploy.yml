@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ctfbot
+      POSTGRES_DB: ctfbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctfbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --maxmemory 64mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  scheduler:
+    image: ghcr.io/sotsuba/yotsubactf/scheduler:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres:5432/ctfbot
+      REDIS_URL: redis://redis:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      HEALTH_PORT: 8085
+    dns_opt:
+      - ndots:1
+    # Health endpoint exposed only on localhost — check via: curl http://localhost:8086/health
+    ports:
+      - "127.0.0.1:8086:8085"
+    networks:
+      - backend
+
+  gateway:
+    image: ghcr.io/sotsuba/yotsubactf/gateway:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ctfbot:${POSTGRES_PASSWORD}@postgres:5432/ctfbot
+      REDIS_URL: redis://redis:6379
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+      BOT_CONTACT_EMAIL: ${BOT_CONTACT_EMAIL}
+      HEALTH_PORT: 8085
+    dns_opt:
+      - ndots:1
+    # Health endpoint exposed only on localhost — check via: curl http://localhost:8085/health
+    ports:
+      - "127.0.0.1:8085:8085"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:

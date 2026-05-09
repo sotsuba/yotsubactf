@@ -300,7 +300,7 @@ pub trait ReminderRepository: Send + Sync {
 
 /// A delivery target that posts a CTF event notification to a set of channels.
 ///
-/// The pipeline resolves channel IDs from [`GuildRepository`] and passes them
+/// The [`NotifyTask`] resolves channel IDs from [`GuildRepository`] and passes them
 /// in. Implementations only format and send — no DB knowledge required.
 #[async_trait]
 pub trait Notifier: Send + Sync {

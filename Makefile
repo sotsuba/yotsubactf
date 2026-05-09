@@ -61,8 +61,3 @@ hooks:
 	git config core.hooksPath .githooks
 	chmod +x .githooks/*
 
-# Regenerate sqlx offline data - run whenever SQL queries are added or modified
-prepare:
-	DATABASE_URL=postgres://ctfbot:ctfbot@localhost:5432/ctfbot \
-	cargo sqlx prepare --workspace
-	git add .sqlx/

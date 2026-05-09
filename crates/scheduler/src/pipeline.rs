@@ -35,7 +35,7 @@ use tokio::task::JoinSet;
 use tracing::{error, info, warn};
 
 use metrics;
-use shared::{CtfEventRepository, GuildRepository, Notifier, UpsertStatus};
+use shared::{CtfEventRepository, GuildRepository, UpsertStatus};
 
 use crate::ctftime::{api, html, models::EnrichedEvent};
 
@@ -60,13 +60,12 @@ pub struct ScrapeStats {
     pub errors: usize,
 }
 
-/// Scrape CTFTime, upsert new/changed events, notify only for new inserts.
+/// Scrape CTFTime, upsert new/changed events.
 pub async fn run_once(
     http: &Client,
     llm: Option<&crate::llm::GeminiClient>,
     event_repo: &(impl CtfEventRepository + ?Sized),
     guild_repo: &(impl GuildRepository + ?Sized),
-    notifier: &(impl Notifier + ?Sized),
 ) -> CtfResult<ScrapeStats> {
     // 1. Fetch raw events from the REST API.
     let raw_events = api::fetch_upcoming(http).await?;
@@ -100,38 +99,25 @@ pub async fn run_once(
     }
 
     // 3. Process the enriched events.
-    process_events(&enriched, event_repo, guild_repo, notifier).await
+    process_events(&enriched, event_repo, guild_repo).await
 }
 
-/// Core processing logic: upsert events and notify if brand new.
+/// Core processing logic: upsert events.
 pub async fn process_events(
     events: &[shared::CtfEvent],
     event_repo: &(impl CtfEventRepository + ?Sized),
-    guild_repo: &(impl GuildRepository + ?Sized),
-    notifier: &(impl Notifier + ?Sized),
+    _guild_repo: &(impl GuildRepository + ?Sized),
 ) -> CtfResult<ScrapeStats> {
-    // Resolve notification channels once.
-    let subscriptions = guild_repo.list_active_subscriptions().await?;
-    let channel_ids: Vec<String> = subscriptions.iter().map(|s| s.channel_id.clone()).collect();
-
     let mut stats = ScrapeStats::default();
     for event in events {
         match event_repo.upsert_event(event).await {
             Ok(UpsertStatus::Inserted) => {
                 stats.inserted += 1;
-                info!(title = %event.title, "New event inserted — sending notification");
-                if !channel_ids.is_empty() {
-                    if let Err(err) = notifier.send(event, &channel_ids).await {
-                        error!(title = %event.title, ?err, "Notification failed");
-                        stats.errors += 1;
-                    } else {
-                        stats.notified += 1;
-                    }
-                }
+                info!(title = %event.title, "New event inserted");
             }
             Ok(UpsertStatus::Updated) => {
                 stats.updated += 1;
-                info!(title = %event.title, "Event updated (no re-notify)");
+                info!(title = %event.title, "Event updated");
             }
             Ok(UpsertStatus::Unchanged) => {}
             Err(err) => {
