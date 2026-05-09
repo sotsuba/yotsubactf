@@ -45,32 +45,44 @@ impl DiscordNotifier {
 
     // ── Internal helpers ──────────────────────────────────────────────────────
 
-    async fn post_json(&self, url: &str, body: Value) -> Result<()> {
-        let resp = self
+    async fn send_request(
+        &self,
+        method: reqwest::Method,
+        url: &str,
+        body: Option<Value>,
+    ) -> Result<reqwest::Response> {
+        let mut rb = self
             .client
-            .post(url)
-            .header("Authorization", &self.auth_header)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|err| {
-                let err_msg = format!("{}", err);
-                if err_msg.contains("timeout") {
-                    CtfError::Timeout
-                } else {
-                    CtfError::ExternalApi {
-                        status: 0,
-                        message: format!("HTTP request to Discord failed: {err}"),
-                    }
+            .request(method, url)
+            .header("Authorization", &self.auth_header);
+
+        if let Some(b) = body {
+            rb = rb.json(&b);
+        }
+
+        let resp = rb.send().await.map_err(|err| {
+            let err_msg = format!("{}", err);
+            if err_msg.contains("timeout") {
+                CtfError::Timeout
+            } else {
+                CtfError::ExternalApi {
+                    status: 0,
+                    message: format!("HTTP request to Discord failed: {err}"),
                 }
-            })?;
+            }
+        })?;
 
         let status = resp.status();
         if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
             metrics::counter!(shared::metrics::GATEWAY_RATE_LIMIT_TOTAL).increment(1);
-            return Err(CtfError::PermissionDenied(
-                "Discord rate-limited (429)".to_string(),
-            ));
+            let retry_after = resp
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|h| h.to_str().ok())
+                .and_then(|s| s.parse::<f64>().ok())
+                .map(std::time::Duration::from_secs_f64);
+
+            return Err(CtfError::RateLimit { retry_after });
         }
 
         if !status.is_success() {
@@ -80,6 +92,12 @@ impl DiscordNotifier {
             });
         }
 
+        Ok(resp)
+    }
+
+    async fn post_json(&self, url: &str, body: Value) -> Result<()> {
+        self.send_request(reqwest::Method::POST, url, Some(body))
+            .await?;
         Ok(())
     }
 
@@ -114,29 +132,13 @@ impl DiscordNotifier {
         let url = format!("{}/users/@me/channels", self.api_base);
         let body = json!({ "recipient_id": user_id });
         let resp = self
-            .client
-            .post(&url)
-            .header("Authorization", &self.auth_header)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|err| {
-                let err_msg = format!("{}", err);
-                if err_msg.contains("timeout") {
-                    CtfError::Timeout
-                } else {
-                    CtfError::ExternalApi {
-                        status: 0,
-                        message: format!("HTTP request to Discord failed: {err}"),
-                    }
-                }
-            })?;
+            .send_request(reqwest::Method::POST, &url, Some(body))
+            .await?;
 
-        let status = resp.status();
-        let data: Value = resp.json().await.map_err(|e| CtfError::ExternalApi {
-            status: status.as_u16(),
-            message: format!("Failed to parse DM channel response: {e}"),
-        })?;
+        let data: Value = resp
+            .json()
+            .await
+            .map_err(|e| CtfError::Internal(format!("Failed to parse DM response: {e}")))?;
         data["id"]
             .as_str()
             .map(str::to_string)

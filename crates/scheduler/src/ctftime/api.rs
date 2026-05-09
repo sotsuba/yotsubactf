@@ -46,6 +46,10 @@ pub async fn fetch_upcoming(client: &Client) -> CtfResult<Vec<RawCtftimeEvent>> 
     )
     .increment(1);
 
+    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        return Err(CtfError::RateLimit { retry_after: None });
+    }
+
     if !status.is_success() {
         return Err(CtfError::ExternalApi {
             status: status.as_u16(),

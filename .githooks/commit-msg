@@ -11,7 +11,7 @@ if echo "$MSG" | grep -qE "^(Merge|fixup!|squash!)"; then
     exit 0
 fi
 
-PATTERN="^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert|infra)(\(.+\))?(!)?: .{1,100}"
+PATTERN="^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert|infra|security)(\([a-zA-Z0-9._/-]+\))?(!)?: .{1,100}$"
 
 if ! echo "$MSG" | grep -qE "$PATTERN"; then
     log_header "commit-msg" "Conventional Commits check"
@@ -20,11 +20,12 @@ if ! echo "$MSG" | grep -qE "$PATTERN"; then
     echo ""
     echo "  ${BOLD}${WHITE}Format:${RESET} <type>(<scope>): <description>"
     echo ""
-    echo "  ${BOLD}${WHITE}Types:${RESET}  feat fix chore docs style refactor perf test ci build revert infra"
+    echo "  ${BOLD}${WHITE}Types:${RESET}  feat fix chore docs style refactor perf test ci build revert infra security"
     echo ""
     echo "  ${BOLD}${WHITE}Example:${RESET}"
     echo "    feat(reminder): add notify_channel_id option"
     echo "    fix(scheduler): skip stale reminders correctly"
+    echo "    security(scheduler): harden external HTML fetching"
     echo ""
     
     log_failure "commit-msg" "regex match" "Follow Conventional Commits format"

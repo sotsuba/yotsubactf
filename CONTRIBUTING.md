@@ -7,6 +7,7 @@ Thank you for your interest in contributing! This document covers everything you
 - [Development Setup](#development-setup)
 - [Project Structure](#project-structure)
 - [Making Changes](#making-changes)
+- [Git Workflow](#git-workflow)
 - [Commit Convention](#commit-convention)
 - [Pull Request Process](#pull-request-process)
 
@@ -136,6 +137,83 @@ Migrations run automatically on bot startup. Make them idempotent where possible
 
 If you add a new background task or command, consider adding a Prometheus counter or histogram. Existing patterns are in `crates/shared/src/metrics.rs`.
 
+## Git Workflow
+
+This project uses a `dev -> main` workflow.
+
+- `main` is the stable/release branch.
+- `dev` is the active integration branch.
+- Feature, fix, docs, chore, and security branches should be created from `dev`.
+
+Before starting new work:
+
+```bash
+git checkout dev
+git pull --ff-only origin dev
+git checkout -b fix/example-change
+```
+Most pull requests should target:
+```
+your-branch -> dev
+```
+Only release pull requests should target:
+```
+dev -> main
+```
+
+Before opening a PR, double-check the base branch on GitHub. If a PR accidentally targets main, change the base branch to dev before merging.
+
+After a PR is squash-merged, GitHub creates a new commit on the target branch. The original branch commits may still appear in Git graph tools until the branch is deleted.
+
+After the PR is merged:
+```bash
+git checkout dev
+git pull --ff-only origin dev
+git branch -D your-branch
+git fetch --prune
+```
+If the remote branch was not deleted automatically:
+```bash
+git push origin --delete your-branch
+git fetch --prune
+```
+
+If a PR is accidentally merged into main but the change should be kept, merge main back into dev:
+```bash
+git checkout dev
+git pull --ff-only origin dev
+git fetch origin
+git merge origin/main
+git push origin dev
+```
+If the change should not be kept on main, revert it on main instead.
+
+For a normal commit or squash merge:
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git revert <commit_sha>
+git push origin main
+```
+
+For a merge commit:
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git revert -m 1 <merge_commit_sha>
+git push origin main
+```
+
+Useful commands:
+```bash 
+git branch -a
+git log --oneline --graph --decorate --all
+git fetch --prune
+git status
+```
+
 ## Commit Convention
 
 This project enforces [Conventional Commits](https://www.conventionalcommits.org/).
@@ -144,7 +222,7 @@ The `commit-msg` hook will reject non-conforming messages.
 ```
 <type>(<scope>): <description>
 
-Types: feat, fix, perf, refactor, docs, ci, chore, style, test, infra
+Types: feat, fix, perf, refactor, docs, ci, chore, style, test, infra, security
 Scope: gateway, scheduler, db, shared, migrations, monitoring (optional)
 
 Examples:
@@ -152,6 +230,7 @@ Examples:
   fix(reminder): handle timezone edge case in set_timer
   infra(monitoring): add node-exporter to prod compose
   ci: skip workflow on doc-only changes
+  security(scheduler): harden external HTML fetching
 ```
 
 ## Pull Request Process
@@ -161,3 +240,4 @@ Examples:
 3. Make sure CI passes before requesting review.
 4. Fill in the PR template checklist, especially the `make prepare` item if you touched SQL.
 5. PRs are merged into `dev` first, then `dev` → `main` for releases.
+6. After a squash merge, delete the working branch locally and remotely if it is no longer needed.

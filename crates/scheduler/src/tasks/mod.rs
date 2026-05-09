@@ -81,11 +81,21 @@ pub async fn run_task_loop(
                 )
                 .increment(1);
 
-                if let CtfError::RateLimit { .. } = e {
-                    warn!(task = task.name(), "Rate limit hit, backing off");
-                    current_interval = std::cmp::min(current_interval * 2, max_interval);
+                if let CtfError::RateLimit { retry_after } = e {
+                    warn!(
+                        task = task.name(),
+                        ?retry_after,
+                        "Rate limit hit, backing off"
+                    );
+
+                    // Use the retry hint if provided, otherwise double the current interval.
+                    // We also ensure we don't drop below the current interval if the hint is small.
+                    let delay = retry_after.unwrap_or(current_interval * 2);
+                    current_interval =
+                        std::cmp::min(std::cmp::max(current_interval, delay), max_interval);
+
                     ticker = tokio::time::interval(current_interval);
-                    ticker.tick().await;
+                    ticker.tick().await; // Skip immediate tick
                 } else {
                     error!(task = task.name(), ?e, "Task cycle failed");
                 }
