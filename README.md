@@ -4,7 +4,7 @@
 [![CI](https://github.com/sotsuba/yotsubactf/actions/workflows/ci.yml/badge.svg)](https://github.com/sotsuba/yotsubactf/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.95-orange.svg)](https://www.rust-lang.org)
-> My imaginary friend hate to open CTFTime to see things 💔. I also cannot open it everyday.
+> My imaginary friends hate to open CTFTime to see things 💔. I also cannot open it everyday.
 >
 > So I force Yotsuba do these tasks for us. 🍀
 
