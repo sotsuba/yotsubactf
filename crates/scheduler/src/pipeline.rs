@@ -1,16 +1,18 @@
-//! Core scrape → enrich → store → notify pipeline.
+//! Core scrape → enrich → store pipeline.
 //!
 //! Dependency inversion
 //! ────────────────────
-//! The notifier receives pre-resolved channel IDs and has no DB access.
-//!   pipeline → guild_repo.list_active_subscriptions()  (resolve channel IDs)
-//!   pipeline → notifier.send(event, &channel_ids)       (just send, no DB)
+//! The pipeline handles fetching and storing data. It does not trigger
+//! notifications directly; instead, it relies on database state to
+//! signal the NotifyTask to handle delivery.
 //!
 //! Re-notify guard
 //! ───────────────
 //! `upsert_event` returns [`UpsertStatus`]. Only [`UpsertStatus::Inserted`]
-//! (a brand-new event) triggers a notification. Updates caused by schedule
-//! tweaks or enrichment passes are intentionally silent.
+//! (a brand-new event) marks the event as eligible for notification.
+//! The `NotifyTask` will eventually pick up these events and send them.
+//! Updates caused by schedule tweaks or enrichment passes are intentionally
+//! silent (notified_at is preserved).
 //!
 //! Concurrent enrichment
 //! ─────────────────────
@@ -56,7 +58,6 @@ fn enrich_concurrency() -> usize {
 pub struct ScrapeStats {
     pub inserted: usize,
     pub updated: usize,
-    pub notified: usize,
     pub errors: usize,
 }
 

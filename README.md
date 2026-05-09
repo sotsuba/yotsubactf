@@ -93,10 +93,10 @@ Plug in a Discord webhook and let your server scream at you the moment your bot 
 ## Development, CI/CD, and Deployment
 
 Useful files:
-- [CONTRIBUTING.md](CONTRIBUTING.md): Local dev workflow, git hooks, and SQLx offline data steps
-- [HOW_TO_SETUP_YOUR_BOT.md](docs/bot-setup.md): How to setup the bot in your server (Subscribe, Notifications, Team tracking)
-- [API_ENDPOINTS.md](docs/api-endpoints.md): API endpoints
-- [SLASH_COMMANDS.md](docs/slash-commands.md): Slash commands
+- [CONTRIBUTING.md](CONTRIBUTING.md): Local dev workflow, Git branch workflow, git hooks, and SQLx offline data steps
+- [Bot setup](docs/bot-setup.md): How to setup the bot in your server
+- [API endpoints](docs/api-endpoints.md): API endpoints
+- [Slash commands](docs/slash-commands.md): Slash commands
 
 Use Docker Compose for local or private hosting.
 
