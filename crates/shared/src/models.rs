@@ -6,10 +6,10 @@ use uuid::Uuid;
 
 /// What happened when a CTF event was upserted.
 ///
-/// The pipeline uses this to decide whether to fire a notification:
-/// only [`UpsertStatus::Inserted`] (a brand-new event) triggers one.
-/// Updates to existing events (schedule tweaks, enrichment passes) are
-/// intentionally silent so users are not spammed on every scrape cycle.
+/// The pipeline uses this for statistics. Notifications are handled
+/// asynchronously by the [`NotifyTask`] based on the `notified_at` field.
+/// Only events that were newly [`UpsertStatus::Inserted`] will eventually
+/// be picked up for notification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpsertStatus {
     /// A row was created for the first time. → Notify.

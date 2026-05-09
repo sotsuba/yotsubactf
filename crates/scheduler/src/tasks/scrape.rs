@@ -22,7 +22,6 @@ pub async fn run_once(state: &SharedState) -> CtfResult<()> {
         state.llm.as_ref(),
         &*state.event_repo,
         &*state.guild_repo,
-        &*state.notifier,
     )
     .await?;
     info!(?stats, "Scrape complete");
