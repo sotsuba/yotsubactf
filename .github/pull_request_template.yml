@@ -1,13 +1,26 @@
 ## Summary
-<!-- What does this PR do? -->
+<!-- What does this PR do? Why is it needed? -->
+
+## Changes
+<!-- Optional: list notable changes -->
+- 
 
 ## Type of change
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Refactor
 - [ ] Docs / CI
+- [ ] Chore / maintenance
+
+## Testing
+<!-- What did you run? Example: cargo fmt, cargo clippy, cargo test -->
+- [ ] `cargo fmt`
+- [ ] `cargo clippy`
+- [ ] `cargo test`
+- [ ] Not run; reason:
 
 ## Checklist
-- [ ] `cargo fmt` and `cargo clippy` pass
-- [ ] Tests added or updated
-- [ ] If SQL queries changed: `make prepare` run and `.sqlx/` committed
+- [ ] I reviewed my own diff before opening this PR
+- [ ] Tests added/updated, or not needed because:
+- [ ] If SQL queries changed, `make prepare` was run and `.sqlx/` was committed
+- [ ] If behavior changed, docs/config examples were updated if needed
