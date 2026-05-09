@@ -414,9 +414,18 @@ impl WriteCtfRepository for PostgresCtfRepository {
                 social_links = EXCLUDED.social_links,
                 is_onsite    = EXCLUDED.is_onsite,
                 updated_at   = NOW()
-            RETURNING
-                (xmax = 0)           AS inserted,
-                (updated_at < NOW()) AS changed
+            WHERE
+                ctf_events.title IS DISTINCT FROM EXCLUDED.title OR
+                ctf_events.url IS DISTINCT FROM EXCLUDED.url OR
+                ctf_events.start_time IS DISTINCT FROM EXCLUDED.start_time OR
+                ctf_events.end_time IS DISTINCT FROM EXCLUDED.end_time OR
+                ctf_events.weight IS DISTINCT FROM EXCLUDED.weight OR
+                ctf_events.format IS DISTINCT FROM EXCLUDED.format OR
+                ctf_events.organiser IS DISTINCT FROM EXCLUDED.organiser OR
+                ctf_events.description IS DISTINCT FROM EXCLUDED.description OR
+                ctf_events.social_links IS DISTINCT FROM EXCLUDED.social_links OR
+                ctf_events.is_onsite IS DISTINCT FROM EXCLUDED.is_onsite
+            RETURNING (xmax = 0) AS inserted
             "#,
         )
         .bind(event.ctftime_id)
@@ -433,19 +442,20 @@ impl WriteCtfRepository for PostgresCtfRepository {
             serde_json::Value::Array(vec![])
         }))
         .bind(event.is_onsite)
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await.map_err(crate::db_err)?;
 
-        let inserted: bool = row.try_get("inserted").map_err(crate::db_err)?;
-        let changed: bool = row.try_get("changed").map_err(crate::db_err)?;
-
-        Ok(if inserted {
-            UpsertStatus::Inserted
-        } else if changed {
-            UpsertStatus::Updated
-        } else {
-            UpsertStatus::Unchanged
-        })
+        match row {
+            None => Ok(UpsertStatus::Unchanged),
+            Some(row) => {
+                let inserted: bool = row.try_get("inserted").map_err(crate::db_err)?;
+                if inserted {
+                    Ok(UpsertStatus::Inserted)
+                } else {
+                    Ok(UpsertStatus::Updated)
+                }
+            }
+        }
     }
 
     async fn invalidate_upcoming_cache(&self) -> Result<()> {
