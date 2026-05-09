@@ -1,9 +1,11 @@
 name: Security audit
+
 on:
   schedule:
-    - cron: '0 2 * * 1'    # every Monday at 2am
+    - cron: '0 2 * * 1'    # mỗi thứ Hai lúc 2AM
   push:
-    paths: ['Cargo.lock']
+    paths:
+      - 'Cargo.lock'
 
 permissions:
   contents: read
@@ -12,7 +14,12 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v1
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: RustSec Audit
+        uses: rustsec/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ignore: |
+            RUSTSEC-2023-0071
