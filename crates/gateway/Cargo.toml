@@ -34,7 +34,7 @@ sha1         = "0.10"
 sha2         = "0.10"
 digest       = "0.10"
 axum = { workspace = true }
-metrics = "0.24.5"
+metrics = "0.24.6"
 metrics-exporter-prometheus = "0.18.3"
 governor = "0.10.4"
 thiserror.workspace = true

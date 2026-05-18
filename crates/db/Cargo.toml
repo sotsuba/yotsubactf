@@ -14,7 +14,7 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 tracing = { workspace = true }
-metrics = "0.24.5"
+metrics = "0.24.6"
 
 [dev-dependencies]
 tokio = { workspace = true }

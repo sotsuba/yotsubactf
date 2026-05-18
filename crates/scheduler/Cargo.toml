@@ -42,7 +42,7 @@ twilight-util      = { workspace = true }
 regex              = "1"
 axum = { workspace = true }
 async-trait = { workspace = true }
-metrics = "0.24.5"
+metrics = "0.24.6"
 metrics-exporter-prometheus = "0.18.3"
 url = "2.5.8"
 rustls.workspace = true
